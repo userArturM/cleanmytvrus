@@ -1,0 +1,78 @@
+import { useState, type ReactNode } from 'react'
+import type { ConnStatus, KnownTv } from '@shared/api'
+import { errorText } from './ui'
+
+/** The TV's last snapshot, or a plain screen shape until there is one. */
+export function TvThumb({ tv, className }: { tv?: KnownTv; className?: string }): ReactNode {
+  return tv?.thumb ? (
+    <img className={`tv-thumb ${className ?? ''}`} src={tv.thumb} alt={`Экран ${tv.model ?? "телевизора"}`} />
+  ) : (
+    <div className={`tv-thumb no-shot ${className ?? ''}`} aria-hidden />
+  )
+}
+
+function ago(t: number): string {
+  if (!t) return "давно"
+  const m = Math.round((Date.now() - t) / 60000)
+  if (m < 2) return "только что"
+  if (m < 60) return `${m} мин. назад`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h} ч. назад`
+  return `${Math.round(h / 24)} дн. назад`
+}
+
+/** TVs used before. Picking one connects to it (checking the same model answers there). */
+export function TvPicker(props: { tvs: KnownTv[]; status: ConnStatus; onChange: () => void; title: string; hint?: string }): ReactNode {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const current = props.status.state === 'connected' ? props.status.host : undefined
+  const list = props.tvs.filter((t) => t.host !== current)
+  if (!list.length) return null
+
+  async function connect(host: string): Promise<void> {
+    setBusy(host)
+    setError(null)
+    try {
+      const s = await window.cytv.connectKnown(host)
+      if (s.state === 'error') setError(s.error ?? "Не удалось подключиться.")
+    } catch (e) {
+      setError(errorText(e))
+    } finally {
+      setBusy(null)
+      props.onChange()
+    }
+  }
+
+  async function forget(host: string): Promise<void> {
+    await window.cytv.forgetTv(host)
+    props.onChange()
+  }
+
+  return (
+    <div className="card white">
+      <h2>{props.title}</h2>
+      {props.hint && <p className="muted small">{props.hint}</p>}
+      {error && <div className="notice warn">{error}</div>}
+      <div className="tv-list">
+        {list.map((tv) => (
+          <div key={tv.host} className="tv-item">
+            <TvThumb tv={tv} />
+            <div className="tv-item-text">
+              <b>{[tv.manufacturer, tv.model].filter(Boolean).join(' ') || tv.host}</b>
+              <span className="muted small">
+                {tv.host} · использовался {ago(tv.lastUsed)}
+              </span>
+            </div>
+            <div className="row">
+              <button className="btn primary small" disabled={!!busy} onClick={() => connect(tv.host)}>
+                {busy === tv.host ? "Подключение…" : "Подключиться"}
+              </button>
+              <button className="btn ghost small" disabled={!!busy} onClick={() => forget(tv.host)} title="Удалить из списка">
+                Забыть </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

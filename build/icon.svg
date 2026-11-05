@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- The sidebar logo (styles.css .brand-mark) at 20x, on a white plate with the macOS margin. -->
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#07425C" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#FFFFFF" stroke="#E3EAF1" stroke-width="4" filter="url(#shadow)"/>
+  <rect x="262" y="292" width="500" height="340" rx="70" fill="none" stroke="#07425C" stroke-width="60"/>
+  <circle cx="652" cy="432" r="50" fill="#FF3000"/>
+  <rect x="412" y="702" width="200" height="60" rx="12" fill="#07425C"/>
+</svg>

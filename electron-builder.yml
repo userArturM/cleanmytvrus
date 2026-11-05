@@ -1,0 +1,59 @@
+appId: io.github.userarturm.cleanmytvrus
+productName: CleanMyTV Rus
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: resources/upstream
+    to: upstream
+  - from: resources/home.apk
+    to: home.apk
+  - from: resources/home.json
+    to: home.json
+  - from: resources/signing
+    to: signing
+  - from: resources/licenses
+    to: licenses
+# Fuses are switches baked into the Electron binary. Off: running the app as plain Node, NODE_OPTIONS
+# and --inspect, which would let another program borrow the app's identity and network permission.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  # onlyLoadAppFromAsar stays off: with it the unsigned build exits at launch, and it adds little
+  # without code signing and asar integrity checks.
+mac:
+  category: public.app-category.utilities
+  icon: build/icon.icns
+  # No Developer ID certificate, so sign ad hoc ("-"). Left unsigned, the bundle keeps Electron's
+  # linker signature, which no longer matches once the app is renamed and its Info.plist and fuses are
+  # changed: Gatekeeper then calls a downloaded copy "damaged" on Apple silicon instead of offering
+  # Open. Hardened runtime stays off: its library validation needs a Team ID, which ad hoc signing
+  # lacks, and it only matters for notarization, which needs that certificate anyway.
+  identity: '-'
+  hardenedRuntime: false
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # The scan and ADB connection reach devices on the home network.
+  extendInfo:
+    NSLocalNetworkUsageDescription: CleanMyTV Rus подключается к Android TV в вашей домашней сети.
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  # Hyphens, not spaces: GitHub turns spaces in release asset names into dots.
+  artifactName: CleanMyTV-Rus-Setup-${version}.exe
+  installerLanguages: [ru_RU]
+  language: 1049
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  icon: build/icon.png
+  target: AppImage

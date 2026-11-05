@@ -1,0 +1,230 @@
+// The connected TV: one AdbClient, plus the helpers the upstream scripts built on top of tools/tv.py
+// (probe, --batch, b64push.py for large files, base64 pulls).
+import { createHash } from 'node:crypto'
+import { AdbClient, AdbError } from './adb/client'
+import { loadKeys } from './adb/keys'
+import { log } from './log'
+import type { ConnStatus, Probe } from '@shared/api'
+
+let client: AdbClient | null = null
+let status: ConnStatus = { state: 'idle' }
+let keyPath = ''
+let statusListener: (s: ConnStatus) => void = () => {}
+
+export function init(appKeyPath: string, onStatus: (s: ConnStatus) => void): void {
+  keyPath = appKeyPath
+  statusListener = onStatus
+}
+
+function setStatus(s: ConnStatus): ConnStatus {
+  status = s
+  statusListener(s)
+  return s
+}
+
+export function getStatus(): ConnStatus {
+  return status
+}
+
+/** Lets a caller that knows more (reconnect) replace the status the window shows. */
+export function report(s: ConnStatus): ConnStatus {
+  return setStatus(s)
+}
+
+export async function connect(host: string): Promise<ConnStatus> {
+  host = host.trim()
+  disconnect()
+  setStatus({ state: 'connecting', host })
+  try {
+    // "ip" or "ip:port"; the record and messages use the IP, as upstream's TV_HOST does.
+    const m = /^([A-Za-z0-9.-]+)(?::(\d{1,5}))?$/.exec(host)
+    if (!m || (m[2] && (Number(m[2]) < 1 || Number(m[2]) > 65535))) {
+      return setStatus({ state: 'error', host, error: "Некорректный адрес. Введите IP из меню ТВ «Настройки → Сеть», например 192.168.1.50." })
+    }
+    const c = await AdbClient.connect({
+      host: m[1],
+      port: m[2] ? Number(m[2]) : 5555,
+      keys: loadKeys(keyPath),
+      onAuthPrompt: () => setStatus({ state: 'waiting-auth', host })
+    })
+    c.onClose = (err) => {
+      if (client === c) {
+        client = null
+        setStatus({ state: 'error', host, error: `Соединение с ТВ потеряно: ${err.message}` })
+      }
+    }
+    client = c
+    const probe = await readProbe(c, m[1])
+    return setStatus({ state: 'connected', host, probe })
+  } catch (e) {
+    const err = e as AdbError
+    return setStatus({ state: 'error', host, error: friendly(err), connectionError: err.code, needsPairing: err.code === 'tls' })
+  }
+}
+
+function friendly(err: AdbError): string {
+  switch (err.code) {
+    case 'refused':
+      return "ТВ доступен, но сетевая отладка выключена. В меню «Для разработчиков» включите отладку по USB и сетевую/ADB-отладку, если доступна. Если есть только беспроводная отладка (большинство Google TV и Chromecast), выполните сопряжение по коду."
+    case 'timeout':
+    case 'unreachable':
+      return `${err.message} Проверьте IP-адрес, питание ТВ и подключение компьютера к той же сети.`
+    case 'tls':
+      return "Этот ТВ поддерживает только беспроводную отладку: требуется однократное сопряжение по коду."
+    case 'auth':
+      return err.message
+    default:
+      return err.message || String(err)
+  }
+}
+
+export function disconnect(): void {
+  if (client) {
+    const c = client
+    client = null
+    c.close()
+  }
+  if (status.state !== 'idle') setStatus({ state: 'idle', host: status.host })
+}
+
+export function tv(): AdbClient {
+  if (!client || client.closed) throw new Error("Нет подключения к ТВ. Сначала откройте раздел «Подключение».")
+  return client
+}
+
+/** The TV's IP address, without a port. */
+export function host(): string {
+  if (!status.host) throw new Error("Нет подключения к телевизору.")
+  return status.host.replace(/:\d+$/, '')
+}
+
+async function readProbe(c: AdbClient, h: string): Promise<Probe> {
+  const keys = ['ro.product.model', 'ro.product.device', 'ro.product.name', 'ro.product.manufacturer',
+    'ro.build.version.release', 'ro.build.version.sdk', 'ro.build.display.id', 'ro.adb.secure']
+  // One shell call, one line per property, so a slow TV answers in one round trip.
+  const out = await c.shell(keys.map((k) => `getprop ${k}`).join('; '))
+  const v = out.split('\n').map((l) => l.trim())
+  return {
+    host: h,
+    model: v[0] ?? '',
+    device: v[1] ?? '',
+    product: v[2] ?? '',
+    manufacturer: v[3] ?? '',
+    release: v[4] ?? '',
+    sdk: Number(v[5]) || 0,
+    build: v[6] ?? '',
+    adbSecure: v[7] ?? ''
+  }
+}
+
+/** One shell command, logged under `task`. */
+export async function sh(task: string, command: string, opts: { quiet?: boolean; timeoutMs?: number } = {}): Promise<string> {
+  if (!opts.quiet) log(task, 'cmd', command)
+  const out = await tv().shell(command, opts.timeoutMs)
+  if (!opts.quiet && out.trim()) log(task, 'info', out.trimEnd())
+  return out
+}
+
+/** One command per call on the same connection, as tools/tv.py --batch. */
+export async function batch(task: string, commands: string[]): Promise<string[]> {
+  const outs: string[] = []
+  for (const c of commands) outs.push(await sh(task, c))
+  return outs
+}
+
+/**
+ * Upload a file as base64 chunks through plain shell commands, then check the MD5 on the TV
+ * (upstream tools/b64push.py: large ADB sync pushes hang on some TVs).
+ */
+export async function pushB64(task: string, data: Buffer, remote: string, onChunk?: (i: number, n: number) => void): Promise<void> {
+  const c = tv()
+  const want = createHash('md5').update(data).digest('hex')
+  // base64 of the chunk plus the echo must fit one payload; a multiple of 3 keeps '=' padding out of
+  // the middle of the stream, which base64 -d would corrupt.
+  let chunk = Math.min(48 * 1024, Math.floor((c.maxData * 3) / 4) - 64 - remote.length)
+  chunk -= chunk % 3
+  if (chunk < 3) throw new Error(`допустимая длина команд этого ТВ (${c.maxData} байт) слишком мала для загрузки файлов.`)
+  const tmp = remote + '.b64'
+  q(remote); q(tmp)
+  await c.shell(`rm -f ${remote} ${tmp}`)
+  const n = Math.max(1, Math.ceil(data.length / chunk))
+  log(task, 'cmd', `upload ${remote} (${Math.round(data.length / 1024)} KB, ${n} chunks)`)
+  for (let i = 0; i < n; i++) {
+    const part = data.subarray(i * chunk, (i + 1) * chunk).toString('base64')
+    const out = await c.shell(`echo '${part}' >> ${tmp} && echo ok${i}`, 60000)
+    if (!out.includes(`ok${i}`)) throw new Error(`upload chunk ${i + 1} of ${n} failed: ${out.trim()}`)
+    onChunk?.(i + 1, n)
+  }
+  const out = await c.shell(`base64 -d ${tmp} > ${remote} && rm ${tmp} && md5sum ${remote}`, 120000)
+  const got = out.trim().split(/\s+/)[0] ?? ''
+  if (got !== want) throw new Error(`загруженный файл ${remote} повреждён (md5 ${got || 'missing'}, ожидалось ${want}).`)
+  log(task, 'ok', `uploaded ${remote}, контрольная сумма совпадает`)
+}
+
+/** Size and free space of /data in KB, or null when df can't tell. */
+export async function storage(task: string): Promise<{ freeKb: number; totalKb: number } | null> {
+  const out = await sh(task, 'df -k /data', { quiet: true })
+  const line = out.trim().split('\n').reverse().find((l) => /\s\/data\s*$/.test(l) || /^\S+\s+\d+\s+\d+\s+\d+/.test(l))
+  const [totalKb, , freeKb] = (line?.trim().split(/\s+/) ?? []).slice(1, 4).map(Number)
+  return Number.isFinite(freeKb) && Number.isFinite(totalKb) ? { freeKb, totalKb } : null
+}
+
+/** Free space on /data in KB. Infinity when df can't tell, so whatever runs next gives its own answer. */
+export async function freeKb(task: string): Promise<number> {
+  return (await storage(task))?.freeKb ?? Infinity
+}
+
+/** Asks Android to clear every app's cache. Apps rebuild them as they need; nothing else is lost. */
+export async function trimCaches(task: string): Promise<void> {
+  await sh(task, 'pm trim-caches 4096G')
+}
+
+/** Read a file from the TV, binary-safe: base64 on the TV, decoded here. Null when it is missing. */
+export async function pullB64(remote: string): Promise<Buffer | null> {
+  q(remote)
+  const out = await tv().shell(`[ -f ${remote} ] && base64 ${remote} || echo __missing__`, 120000)
+  if (out.includes('__missing__')) return null
+  return Buffer.from(out.replace(/\s+/g, ''), 'base64')
+}
+
+/** Paths and names that go into a TV shell command: refuse anything with shell syntax. */
+export function q(value: string): string {
+  // A leading '-' would turn a name into an option of pm, rm or base64.
+  if (!/^[A-Za-z0-9_./@:][A-Za-z0-9_./@:-]*$/.test(value)) throw new Error(`refusing unsafe name for a TV command: ${value}`)
+  return value
+}
+
+export const PACKAGE_RE = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/
+export const HOME_QUERY = 'cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME'
+export const HOME_CLAIMS = 'cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME'
+
+/** The component that owns Home, or null (Android's chooser answers "android"). */
+export async function homeComponent(): Promise<string | null> {
+  const out = await tv().shell(HOME_QUERY)
+  const last = out.trim().split('\n').pop()?.trim() ?? ''
+  return /^[A-Za-z_][\w.]*\/[\w.$]+$/.test(last) ? last : null
+}
+
+/** What resolve-activity printed last: a component, "android" for the chooser, or "". */
+export async function homeAnswer(): Promise<string> {
+  const out = await tv().shell(HOME_QUERY)
+  return (out.trim().split('\n').pop() ?? '').trim()
+}
+
+export async function homeClaimants(): Promise<string[]> {
+  const out = await tv().shell(HOME_CLAIMS)
+  const pkgs = new Set<string>()
+  for (const line of out.split('\n')) {
+    const m = /^\s*([A-Za-z0-9_.]+)\//.exec(line)
+    if (m) pkgs.add(m[1])
+  }
+  return [...pkgs].sort()
+}
+
+export async function packageSets(): Promise<{ installed: Set<string>; disabled: Set<string> }> {
+  const parse = (out: string): Set<string> => new Set(out.split('\n').filter((l) => l.startsWith('package:')).map((l) => l.slice(8).trim()))
+  const installed = parse(await tv().shell('pm list packages'))
+  if (!installed.size) throw new Error("Телевизор вернул пустой список пакетов. Проверьте соединение и повторите попытку.")
+  const disabled = parse(await tv().shell('pm list packages -d'))
+  return { installed, disabled }
+}

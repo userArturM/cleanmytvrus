@@ -1,0 +1,301 @@
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import type { HomeConfig, QuickEntry, QuickId, TvApp } from '@shared/api'
+
+// The launcher lays out in dp on a 960x540 screen; the preview draws at that size and scales to fit.
+const W = 960
+const H = 540
+const SAFE_X = 48
+const SAFE_Y = 27
+const GAP = 16
+
+const QUICK_GLYPH: Record<QuickId, string> = {
+  inputs: 'M4 7h12v10H4zM16 10h4M16 14h4',
+  wifi: 'M4 9a12 12 0 0 1 16 0M7 12.5a7.5 7.5 0 0 1 10 0M10 16a3 3 0 0 1 4 0',
+  bluetooth: 'M8 7l8 8-4 3V6l4 3-8 8',
+  display: 'M4 6h16v10H4zM9 20h6',
+  apps: 'M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z',
+  sleep: 'M17 14A7 7 0 0 1 10 5a7 7 0 1 0 7 9z',
+  search: 'M11 5a6 6 0 1 1 0 12 6 6 0 0 1 0-12zM16 16l4 4',
+  music: 'M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z',
+  settings: 'M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1',
+  panel: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 5v4M8 15v4',
+  themes: 'M12 4a8 8 0 1 0 0 16c1 0 1.5-.8 1.5-1.6 0-1.4 1-2.4 2.4-2.4H18a2 2 0 0 0 2-2A8 8 0 0 0 12 4zM8 11h.01M11 8h.01M15 8h.01'
+}
+
+export const QUICK_LABEL: Record<QuickId, string> = {
+  inputs: "Источники", wifi: 'Wi-Fi', bluetooth: 'Bluetooth', display: "Изображение и звук", apps: "Приложения", sleep: "Заставка", search: "Поиск", music: "Визуализатор", settings: "Настройки",
+  panel: "Быстрые настройки", themes: "Темы"
+}
+
+export function QuickIcon({ id, size = 16 }: { id: QuickId; size?: number }): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={QUICK_GLYPH[id]} />
+    </svg>
+  )
+}
+
+/** The package of an app shortcut, or null for a quick-settings action. */
+export const quickApp = (q: QuickEntry): string | null => (q.startsWith('app:') ? q.slice(4) : null)
+
+export function quickLabel(q: QuickEntry, apps: TvApp[]): string {
+  const pkg = quickApp(q)
+  return pkg ? (apps.find((a) => a.pkg === pkg)?.label ?? pkg) : QUICK_LABEL[q as QuickId]
+}
+
+/** A stand-in for an app's own icon, which the desktop app can't read: its first letter on a disc. */
+function AppMark({ label, size }: { label: string; size: number }): ReactNode {
+  return (
+    <span aria-hidden style={{ width: size, height: size, borderRadius: size / 2, background: '#D7CFC4', color: '#1C2A1F', display: 'inline-grid', placeItems: 'center', fontSize: size * 0.55, fontWeight: 600, lineHeight: 1, flex: 'none' }}>
+      {label.trim().charAt(0).toUpperCase() || '?'}
+    </span>
+  )
+}
+
+/** The icon a top-bar entry shows: the drawn glyph, or for an app a disc 4 px larger, as on the TV. */
+export function QuickMark({ q, apps, size = 16 }: { q: QuickEntry; apps: TvApp[]; size?: number }): ReactNode {
+  return quickApp(q) ? <AppMark label={quickLabel(q, apps)} size={size + 4} /> : <QuickIcon id={q as QuickId} size={size} />
+}
+
+/** The order and grouping the launcher uses, from the same settings. */
+function model(apps: TvApp[], cfg: HomeConfig) {
+  const by = new Map(apps.map((a) => [a.pkg, a]))
+  const ordered = [...cfg.order.flatMap((p) => (by.has(p) ? [by.get(p)!] : [])), ...apps.filter((a) => !cfg.order.includes(a.pkg)).sort((a, b) => a.label.localeCompare(b.label))].filter(
+    (a) => !cfg.hidden.includes(a.pkg)
+  )
+  const inFolders = new Set(cfg.folders.flatMap((f) => f.apps))
+  const dock = ordered.filter((a) => !inFolders.has(a.pkg)).slice(0, cfg.dock_size)
+  const grid = ordered.filter((a) => !inFolders.has(a.pkg) && !dock.includes(a))
+  const rows = cfg.rows.map((r) => ({ name: r.name, apps: r.apps.flatMap((p) => (by.has(p) ? [by.get(p)!] : [])) })).filter((r) => r.apps.length)
+  const folders = cfg.folders.map((f) => ({ name: f.name, apps: f.apps.flatMap((p) => (by.has(p) ? [by.get(p)!] : [])) })).filter((f) => f.apps.length)
+  return { dock, grid, rows, folders }
+}
+
+function Tile({ app, w, names, focused, cfg }: { app: TvApp; w: number; names: boolean; focused?: boolean; cfg: HomeConfig }): ReactNode {
+  const ring: CSSProperties = focused
+    ? cfg.focus === 'glow'
+      ? { boxShadow: `0 0 0 2px #F0EBE5, 0 0 16px 4px ${cfg.accent}`, transform: 'scale(1.08)' }
+      : cfg.focus === 'outline'
+        ? { outline: `3px solid ${cfg.accent}`, outlineOffset: 0, transform: 'scale(1.08)' }
+        : cfg.focus === 'lift'
+          ? { boxShadow: `0 10px 18px -4px rgba(0,0,0,.6), 0 0 22px 1px ${cfg.accent}59, inset 0 0 0 1px rgba(255,255,255,.28)`, transform: 'scale(1.09) translateY(-3px)' }
+          : {}
+    : {}
+  // The icon styles: square, squircle or round tiles, a little narrower; the logo shows on the TV, the
+  // preview draws the first letter in its place.
+  const icons = cfg.icon_style !== 'banner'
+  const shape = icons ? cfg.tile_shape : 'wide'
+  const side = shape === 'wide' ? w : w * 0.72
+  const radius = shape === 'round' ? '50%' : shape === 'squircle' ? '32%' : shape === 'square' ? '22%' : 10
+  const fill = cfg.icon_style === 'mono' ? 'rgba(255,255,255,.12)' : cfg.icon_style === 'duo' ? `color-mix(in srgb, ${cfg.background} 70%, ${cfg.accent})` : '#2D3A2E'
+  const ink = cfg.icon_style === 'mono' || cfg.icon_style === 'duo' ? `color-mix(in srgb, ${cfg.accent} 65%, white)` : '#F0EBE5'
+  return (
+    <div style={{ width: side, flex: 'none' }}>
+      <div style={{ height: shape === 'wide' ? (w * 9) / 16 : side, borderRadius: radius, background: fill, display: 'grid', placeItems: 'center', color: ink, fontWeight: icons ? 600 : 500, fontSize: icons && shape !== 'wide' ? side * 0.4 : Math.max(12, w / 11), padding: '0 8px', textAlign: 'center', lineHeight: 1.15, overflow: 'hidden', ...ring }}>
+        {icons ? app.label.charAt(0).toUpperCase() : app.label}
+      </div>
+      {names && <div style={{ visibility: focused || !cfg.name_focus ? 'visible' : 'hidden', marginTop: 6, fontSize: 14, color: '#F0EBE5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: shape === 'wide' ? 'left' : 'center' }}>{app.label}</div>}
+    </div>
+  )
+}
+
+function Folder({ name, apps, w }: { name: string; apps: TvApp[]; w: number }): ReactNode {
+  return (
+    <div style={{ width: w, flex: 'none' }}>
+      <div style={{ height: (w * 9) / 16, borderRadius: 10, background: 'rgba(45,58,46,0.9)', padding: 7, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+        {apps.slice(0, 4).map((a) => (
+          <div key={a.pkg} style={{ borderRadius: 4, background: '#3A4A3B' }} />
+        ))}
+      </div>
+      <div style={{ marginTop: 6, fontSize: 14, color: '#F0EBE5' }}>
+        {name} · {apps.length}
+      </div>
+    </div>
+  )
+}
+
+function Title({ children }: { children: ReactNode }): ReactNode {
+  return <div style={{ fontSize: 18, color: '#F0EBE5', fontWeight: 500, margin: '12px 0 4px' }}>{children}</div>
+}
+
+function Sections({ apps, cfg, width, dockW, showFolders = true }: { apps: TvApp[]; cfg: HomeConfig; width: number; dockW: number; showFolders?: boolean }): ReactNode {
+  const m = model(apps, cfg)
+  const gridW = (width - GAP * (cfg.columns - 1)) / cfg.columns
+  const rowW = 148 * (cfg.tile_scale / 100)
+  let focused = false
+  const focusOnce = (): boolean => (focused ? false : (focused = true))
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {cfg.sections.map((s) => {
+        // A stand-in: on the TV the card shows only while an app has something playing.
+        if (s === 'nowplaying')
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 14, width: 520, padding: 12, margin: '8px 0', borderRadius: 14, background: 'rgba(45,58,46,0.88)' }}>
+              <div style={{ width: 64, height: 64, borderRadius: 8, background: '#3A4A3B', flex: 'none' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 17, fontWeight: 500 }}>Сейчас играет</div>
+                <div style={{ fontSize: 13, color: '#D7CFC4', marginTop: 3 }}>Исполнитель · Приложение, во время воспроизведения</div>
+              </div>
+              {['❚❚', '▸▸'].map((g) => (
+                <div key={g} style={{ width: 44, height: 44, borderRadius: 22, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center', fontSize: 13 }}>{g}</div>
+              ))}
+            </div>
+          )
+        if (s === 'dock' && m.dock.length)
+          return (
+            <div key={s} style={{ display: 'flex', gap: GAP, padding: '8px 0' }}>
+              {m.dock.map((a, i) => <Tile key={a.pkg} app={a} w={dockW * (cfg.dock_scale / 100)} names={cfg.show_names} focused={i === 0 && focusOnce()} cfg={cfg} />)}
+            </div>
+          )
+        if (s === 'rows')
+          return m.rows.map((r, ri) => (
+            <div key={`row${ri}`}>
+              <Title>{r.name}</Title>
+              <div style={{ display: 'flex', gap: GAP, padding: '6px 0' }}>
+                {r.apps.map((a, i) => <Tile key={a.pkg} app={a} w={rowW} names={cfg.show_names} focused={ri === 0 && i === 0 && focusOnce()} cfg={cfg} />)}
+              </div>
+            </div>
+          ))
+        if (s === 'folders' && showFolders && m.folders.length)
+          return (
+            <div key={s}>
+              <Title>Папки</Title>
+              <div style={{ display: 'flex', gap: GAP, padding: '6px 0' }}>
+                {m.folders.map((f) => <Folder key={f.name} name={f.name} apps={f.apps} w={rowW} />)}
+              </div>
+            </div>
+          )
+        if (s === 'grid' && m.grid.length)
+          return (
+            <div key={s}>
+              <Title>{m.dock.length || m.rows.length ? "Все приложения" : "Приложения"}</Title>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cfg.columns}, ${gridW}px)`, gap: `14px ${GAP}px`, padding: '6px 0' }}>
+                {m.grid.map((a, i) => <Tile key={a.pkg} app={a} w={gridW} names={cfg.show_names} focused={i === 0 && focusOnce()} cfg={cfg} />)}
+              </div>
+            </div>
+          )
+        return null
+      })}
+    </div>
+  )
+}
+
+function Clock({ cfg, size, dateSize, align }: { cfg: HomeConfig; size: number; dateSize: number; align: 'left' | 'right' }): ReactNode {
+  if (cfg.clock === 'off') return null
+  return (
+    <div style={{ textAlign: align }}>
+      <div style={{ fontSize: size, fontWeight: 300, lineHeight: 1.1, fontFamily: 'var(--font)' }}>9:41</div>
+      {cfg.clock === 'time_date' && <div style={{ fontSize: dateSize, color: '#D7CFC4', fontFamily: 'var(--font)' }}>Среда, 28 октября</div>}
+      {cfg.weather_place && (
+        <div style={{ fontSize: dateSize, color: '#D7CFC4', fontFamily: 'var(--font)', marginTop: 4 }}>
+          ☁ 14°  16° / 9°  {cfg.weather_place}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const greetingText = (cfg: HomeConfig): string | null => (cfg.greeting.trim() ? `Добрый вечер, ${cfg.greeting.trim()}` : null)
+
+/**
+ * A picture of the TV's home screen from the same settings the launcher reads: layout, sections, sizes
+ * and colours. App art is a coloured monogram, since the desktop app can't read the TV's banners.
+ */
+export function HomePreview({ apps, cfg }: { apps: TvApp[]; cfg: HomeConfig }): ReactNode {
+  const box = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0.5)
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setScale(el.clientWidth / W))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const greet = greetingText(cfg)
+  // As on the TV: icons it can't open, and shortcuts to apps that aren't installed, are left out.
+  const quick = cfg.quick.filter((q) => {
+    const pkg = quickApp(q)
+    return pkg ? apps.some((a) => a.pkg === pkg) : !cfg.quick_available || cfg.quick_available.includes(q as QuickId)
+  })
+  const ground: CSSProperties = {
+    background: cfg.has_wallpaper
+      ? `linear-gradient(rgba(0,0,0,${cfg.wallpaper_dim / 100}), rgba(0,0,0,${cfg.wallpaper_dim / 100})), linear-gradient(160deg, #6b5a3e, #2f3b2a 55%, #1a2418)`
+      : cfg.background
+  }
+  let body: ReactNode
+  if (cfg.layout === 'split') {
+    body = (
+      <div style={{ display: 'flex', height: '100%', background: 'linear-gradient(90deg, rgba(28,42,31,0.7), transparent 60%)' }}>
+        <div style={{ width: W * 0.32, padding: `${SAFE_Y + 24}px 0 ${SAFE_Y + 48}px ${SAFE_X}px`, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Clock cfg={cfg} size={56} dateSize={15} align="left" />
+          {greet && <div style={{ fontSize: 18, fontWeight: 500 }}>{greet}</div>}
+          <div style={{ flex: 1 }} />
+          {quick.map((q) => (
+            <div key={q} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 15 }}>
+              <span style={{ width: 22, display: 'inline-grid', placeItems: 'center' }}>
+                <QuickMark q={q} apps={apps} size={18} />
+              </span>{' '}
+              {quickLabel(q, apps)}
+            </div>
+          ))}
+        </div>
+        <div style={{ flex: 1, padding: `${SAFE_Y + 12}px ${SAFE_X}px 0 0`, overflow: 'hidden' }}>
+          <Sections apps={apps} cfg={cfg} width={W * 0.68 - SAFE_X} dockW={168} />
+        </div>
+      </div>
+    )
+  } else if (cfg.layout === 'rail') {
+    body = (
+      <div style={{ display: 'flex', height: '100%' }}>
+        <div style={{ width: SAFE_X + 56, padding: `${SAFE_Y + 8}px 0 0 ${SAFE_X + 7}px`, display: 'flex', flexDirection: 'column', gap: 18, background: 'linear-gradient(90deg, rgba(28,42,31,0.6), rgba(28,42,31,0.1))' }}>
+          {quick.map((q) => (
+            <span key={q} style={{ width: 22, height: 22, display: 'grid', placeItems: 'center' }}>
+              <QuickMark q={q} apps={apps} size={22} />
+            </span>
+          ))}
+          {cfg.folders.length > 0 && <div style={{ height: 6 }} />}
+          {cfg.folders.map((f) => (
+            <svg key={f.name} viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path d="M3 7h6l2 2h10v10H3z" />
+            </svg>
+          ))}
+        </div>
+        <div style={{ flex: 1, padding: `${SAFE_Y}px ${SAFE_X}px 0 24px`, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 20, fontWeight: 500, flex: 1 }}>{greet}</div>
+            <Clock cfg={cfg} size={26} dateSize={12} align="right" />
+          </div>
+          <Sections apps={apps} cfg={cfg} width={W - SAFE_X - 56 - 24 - SAFE_X} dockW={196} showFolders={false} />
+        </div>
+      </div>
+    )
+  } else {
+    body = (
+      <div style={{ height: '100%', padding: `${SAFE_Y}px ${SAFE_X}px 0`, overflow: 'hidden', background: 'linear-gradient(rgba(28,42,31,0.6), transparent 210px)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 20, fontWeight: 500, flex: 1, paddingTop: 4 }}>{greet}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+            <Clock cfg={cfg} size={26} dateSize={12} align="right" />
+            {quick.length > 0 && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                {quick.map((q) => (
+                  <span key={q} style={{ width: 40, height: 40, borderRadius: 20, background: 'rgba(255,255,255,0.08)', display: 'grid', placeItems: 'center' }}>
+                    <QuickMark q={q} apps={apps} size={22} />
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ height: (H * cfg.top_space) / 100 }} />
+        <Sections apps={apps} cfg={cfg} width={W - SAFE_X * 2} dockW={200} />
+      </div>
+    )
+  }
+  return (
+    <div ref={box} className="home-preview" style={{ height: H * scale }} aria-label="Предпросмотр главного экрана ТВ">
+      <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: '0 0', color: '#F0EBE5', fontFamily: 'Roboto, system-ui, sans-serif', ...ground }}>{body}</div>
+      <span className="home-preview-note">Пример времени и приветствия · Значки приложений видны на ТВ</span>
+    </div>
+  )
+}

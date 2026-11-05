@@ -1,0 +1,296 @@
+// Handing Home to CleanMyTV Home and back: the launcher handover from upstream's build-and-install.sh
+// (start it first, switch off the stock launcher, check where Home landed, roll back if it didn't stick),
+// plus removing the CleanYourTV launcher earlier versions of this app installed.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import * as T from './tv'
+import { log } from './log'
+import { paths } from './paths'
+import { GOOGLE_LAUNCHERS, NOT_LAUNCHERS, SETUPWRAITH, lostNetworks, stockLaunchers, wifiOwner } from './debloat'
+import type { ApplyResult, InstallResult } from '@shared/api'
+
+const TASK = 'install'
+/** CleanMyTV Home, built from home/. */
+export const HOME_PKG = 'io.github.wingedpanther.cleanmytv.home'
+/** The CleanYourTV launcher that CleanMyTV 0.1.x installed. */
+export const OLD_PKG = 'com.gathin.tvhome'
+const OUR_LAUNCHERS = [OLD_PKG, HOME_PKG]
+
+/** The stock launcher couldn't be told apart from other apps that answer Home: the owner picks it (#39). */
+export class StockUnknown extends Error {
+  constructor(message: string, readonly candidates: string[]) {
+    super(message)
+  }
+}
+
+/** Apps that can be Home on the TV, minus ours and the ones that only stand in for a launcher. */
+async function launcherCandidates(): Promise<string[]> {
+  return (await T.homeClaimants()).filter((c) => !OUR_LAUNCHERS.includes(c) && !NOT_LAUNCHERS.includes(c) && c !== 'android')
+}
+
+/**
+ * Which app owns Home differs by build, so ask the TV. A launcher this app or an upstream list knows is
+ * taken as it is; otherwise the app that owns Home now is the stock one. `chosen` is the owner's pick.
+ */
+export async function detectStock(chosen?: string): Promise<string> {
+  const known = stockLaunchers()
+  if (chosen) {
+    if (!(await launcherCandidates()).includes(chosen)) throw new Error(`${chosen} не может быть главным экраном на этом ТВ и не подходит как штатный лаунчер.`)
+    log(TASK, 'info', `stock launcher picked by hand: ${chosen}`)
+    return chosen
+  }
+  const answer = await T.homeAnswer()
+  const homePkg = answer.split('/')[0]
+  if (known.includes(homePkg)) return homePkg
+  if (OUR_LAUNCHERS.includes(homePkg)) {
+    // Ours owns Home for now, but an enabled Google launcher takes it back (#27).
+    const claims = await T.homeClaimants()
+    const on = GOOGLE_LAUNCHERS.find((k) => claims.includes(k))
+    if (on) {
+      log(TASK, 'info', `Home belongs to ${homePkg}, but ${on} is still on and can take Home back; it will be switched off.`)
+      return on
+    }
+    log(TASK, 'info', `Home belongs to ${homePkg}, so the stock launcher is already off; nothing will be disabled.`)
+    return 'none'
+  }
+  if (homePkg === SETUPWRAITH) {
+    throw new Error("Главным экраном является мастер настройки Google TV. Добавьте com.google.android.tungsten.setupwraith в список очистки, примените его и повторите установку.")
+  }
+  const candidates = await launcherCandidates()
+  if (homePkg === 'android') {
+    // Android's chooser: two launchers tie and no default is set. Take the one stock launcher among them.
+    const found = known.filter((k) => candidates.includes(k))
+    const pick = found.length === 1 ? found[0] : found.length === 0 && candidates.length === 1 ? candidates[0] : null
+    if (pick) {
+      log(TASK, 'info', `Home is Android's chooser; the stock launcher among the candidates is ${pick}.`)
+      return pick
+    }
+    throw new StockUnknown("Главным экраном является окно выбора лаунчера Android. Не удалось определить штатный лаунчер ТВ.", candidates)
+  }
+  if (candidates.includes(homePkg)) {
+    log(TASK, 'info', `Home belongs to ${homePkg}, which no list names; taking it as the stock launcher.`)
+    return homePkg
+  }
+  throw new StockUnknown(`Главный экран определяется как «${homePkg || 'nothing'}», поэтому не удалось определить штатный лаунчер ТВ.`, candidates)
+}
+
+/**
+ * What the handover switches off. Google's launchers take Home back, so they go. Vendor launchers stay on,
+ * as upstream's STOCK_LAUNCHER=none does: on many TVs they also run the remote's buttons or the inputs,
+ * and lists say to keep them.
+ */
+export function toSwitchOff(stock: string): string {
+  return GOOGLE_LAUNCHERS.includes(stock) ? stock : 'none'
+}
+
+// ---- the stock launcher of each TV, so Undo and the restart check find a vendor launcher again ----
+
+const stockFile = (): string => join(paths.data, 'stock-launchers.json')
+
+function tvKey(): string {
+  const st = T.getStatus()
+  return st.probe?.device || st.host || ''
+}
+
+function readStockFile(): Record<string, string> {
+  try {
+    return existsSync(stockFile()) ? (JSON.parse(readFileSync(stockFile(), 'utf8')) as Record<string, string>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function rememberStock(stock: string): void {
+  const key = tvKey()
+  if (!key || stock === 'none' || !T.PACKAGE_RE.test(stock)) return
+  const all = readStockFile()
+  if (all[key] === stock) return
+  all[key] = stock
+  mkdirSync(paths.data, { recursive: true })
+  writeFileSync(stockFile(), JSON.stringify(all, null, 2))
+}
+
+// The TVs whose setupwraith the handover switched off, so giving Home back turns it on again.
+const wraithFile = (): string => join(paths.data, 'setupwraith-off.json')
+
+function wraithOff(): string[] {
+  try {
+    return existsSync(wraithFile()) ? (JSON.parse(readFileSync(wraithFile(), 'utf8')) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+function rememberWraith(off: boolean): void {
+  const key = tvKey()
+  if (!key) return
+  const rest = wraithOff().filter((k) => k !== key)
+  mkdirSync(paths.data, { recursive: true })
+  writeFileSync(wraithFile(), JSON.stringify(off ? [...rest, key] : rest, null, 2))
+}
+
+/** This TV's stock launcher: the one remembered from the handover, else a known one that is installed. */
+export function stockOnTv(installed: Set<string>): string | undefined {
+  const mine = readStockFile()[tvKey()]
+  if (mine && installed.has(mine)) return mine
+  return stockLaunchers().find((p) => installed.has(p))
+}
+
+export async function rollback(stock: string): Promise<boolean> {
+  if (stock === 'none') return false
+  try {
+    await T.sh(TASK, `pm enable --user 0 ${stock}`)
+    await T.sh(TASK, `cmd package set-home-activity --user 0 $(${T.HOME_QUERY} ${stock} | tail -n 1)`)
+    const back = await T.homeComponent()
+    if (back?.startsWith(stock + '/')) {
+      log(TASK, 'ok', `${stock} owns Home again.`)
+      return true
+    }
+  } catch (e) {
+    log(TASK, 'error', `rollback failed: ${(e as Error).message}`)
+  }
+  return false
+}
+
+/**
+ * Makes `main` Home: switches off `stock` (unless 'none'), sets the preference, and checks where Home
+ * landed. Android drops the preference whenever the set of HOME apps changes, and on Google TV the next
+ * candidate can be the setup wizard, which crash-loops; so anything but `main` puts the old Home back.
+ * Returns null on success, or the result to show.
+ */
+/** `failed` when Home didn't move; `notes` for the owner when it did. */
+export async function handOver(stock: string, main: string): Promise<{ failed: InstallResult | null; notes: string[] }> {
+  const pkg = main.split('/')[0]
+  const previous = await T.homeComponent().catch(() => null)
+  await T.batch(TASK, [
+    `cmd package compile -m speed -f ${pkg}`,
+    stock === 'none' ? 'echo stock launcher left alone' : `pm disable-user --user 0 ${stock}`,
+    `cmd package set-home-activity --user 0 ${main}`
+  ])
+  let now: string | null = null
+  try { now = await T.homeComponent() } catch { now = null }
+  // Google TV 14: with the stock launcher off, setupwraith's RecoveryActivity outranks the Home preference,
+  // and Clean up keeps setupwraith on until CleanMyTV Home is Home (#40). So it goes here, once `main` has
+  // started, unless the saved Wi-Fi is its: that network would be deleted with it.
+  let wraith: 'off' | 'setupwraith' | 'unknown' | null = null
+  let lostWifi = 0
+  if (stock !== 'none' && now?.startsWith(SETUPWRAITH + '/')) {
+    const { owner, lost } = await wifiOwner(TASK)
+    if (owner === 'system') {
+      lostWifi = lost
+      log(TASK, 'info', `${SETUPWRAITH} took Home; switching it off too`)
+      await T.batch(TASK, [`pm disable-user --user 0 ${SETUPWRAITH}`, `cmd package set-home-activity --user 0 ${main}`])
+      wraith = 'off'
+      try { now = await T.homeComponent() } catch { now = null }
+    } else {
+      wraith = owner
+    }
+  }
+  if (now?.startsWith(pkg + '/')) {
+    log(TASK, 'ok', `Home now resolves to ${now}`)
+    if (wraith === 'off') rememberWraith(true)
+    return { failed: null, notes: wraith === 'off' ? lostNetworks(lostWifi) : [] }
+  }
+  if (wraith === 'off') await T.sh(TASK, `pm enable --user 0 ${SETUPWRAITH}`).catch(() => '')
+  let back = false
+  if (stock !== 'none') back = await rollback(stock)
+  // No '$' here, unlike homeComponent(): the value goes into a shell command.
+  else if (previous && /^[A-Za-z_][\w.]*\/[\w.]+$/.test(previous) && previous !== now) {
+    await T.sh(TASK, `cmd package set-home-activity --user 0 ${previous}`).catch(() => '')
+    back = (await T.homeComponent().catch(() => null)) === previous
+  }
+  const was = stock !== 'none' ? stock : previous ?? "предыдущий лаунчер"
+  const failed: InstallResult = {
+    ok: false,
+    summary: now ? `Главный экран определяется как ${now}, а не новый лаунчер.` : "Телевизор перестал отвечать при переключении главного экрана.",
+    warnings: [
+      back ? `${was} снова назначен главным экраном.` : stock !== 'none' ? `Не удалось автоматически вернуть главный экран. Выполните: pm enable --user 0 ${stock}` : "Не удалось автоматически вернуть предыдущий главный экран.",
+      ...(wraith === 'setupwraith'
+        ? ["Мастер настройки Google TV (setupwraith) перехватывает главный экран, но ему принадлежит ваша сеть Wi-Fi. Отключение удалит сеть. На ТВ забудьте сеть и подключитесь заново в меню «Настройки → Сеть и Интернет», затем повторите установку."]
+        : wraith === 'unknown'
+          ? ["Мастер настройки Google TV (setupwraith) перехватывает главный экран. Не удалось определить владельца сети Wi-Fi, поэтому мастер оставлен включённым. Повторите попытку. При подключении по Ethernet его можно отключить в разделе «Очистка» с обходом ограничений и повторить установку."]
+          : wraith === 'off'
+            ? [`${SETUPWRAITH} был отключён, но новый главный экран не закрепился, поэтому пакет снова включён.`]
+            : [])
+    ]
+  }
+  return { failed, notes: [] }
+}
+
+/**
+ * Starts an installed launcher, and only if it comes up, makes it Home. A stock launcher that is still on
+ * gets switched off too: on Google TV it otherwise keeps Home (#27).
+ */
+export async function switchTo(main: string, chosen?: string): Promise<ApplyResult> {
+  let stock: string
+  try {
+    stock = await detectStock(chosen)
+  } catch (e) {
+    if (e instanceof StockUnknown) return { ok: false, summary: e.message, warnings: [], stockChoices: e.candidates }
+    throw e
+  }
+  const start = await T.sh(TASK, `am start -W -n ${main}`)
+  if (!start.includes('Status: ok') || /^Error/im.test(start)) {
+    return { ok: false, summary: "Лаунчер не запустился. Главный экран не изменён.", warnings: [start.trim()] }
+  }
+  const { failed, notes } = await handOver(toSwitchOff(stock), main)
+  if (!failed) rememberStock(stock)
+  return failed ?? { ok: true, summary: "Главный экран переключён. Нажмите Home на пульте.", warnings: notes }
+}
+
+/** Takes a package's accessibility services out of the TV's enabled list, keeping everyone else's. */
+export async function dropServices(pkg: string): Promise<void> {
+  const services = (await T.tv().shell('settings get secure enabled_accessibility_services')).trim()
+  if (!services.includes(pkg + '/')) return
+  // Only well-formed components go back into a shell command.
+  const rest = services.split(':').filter((c) => c && c !== 'null' && !c.startsWith(pkg + '/') && /^[A-Za-z_][\w.]*\/[\w.]+$/.test(c))
+  await T.sh(TASK, rest.length ? `settings put secure enabled_accessibility_services ${rest.join(':')}` : 'settings delete secure enabled_accessibility_services')
+}
+
+/** Adds a service to the TV's enabled list (once) and switches accessibility on. */
+export async function addService(component: string): Promise<void> {
+  if (!/^[A-Za-z_][\w.]*\/[\w.]+$/.test(component)) throw new Error(`not a component: ${component}`)
+  const services = (await T.tv().shell('settings get secure enabled_accessibility_services')).trim()
+  const list = services.split(':').filter((c) => c && c !== 'null' && /^[A-Za-z_][\w.]*\/[\w.]+$/.test(c))
+  if (!list.includes(component)) list.push(component)
+  await T.sh(TASK, `settings put secure enabled_accessibility_services ${list.join(':')}`)
+  await T.sh(TASK, 'settings put secure accessibility_enabled 1')
+}
+
+/**
+ * Uninstalls the CleanYourTV launcher once it no longer owns Home, and takes its accessibility services
+ * and Clock screensaver out of the TV settings so nothing points at an app that is gone.
+ */
+export async function removeOld(): Promise<ApplyResult> {
+  const { installed } = await T.packageSets()
+  if (!installed.has(OLD_PKG)) return { ok: true, summary: "Лаунчер CleanYourTV не установлен на этом ТВ.", warnings: [] }
+  const home = await T.homeComponent()
+  if (home?.startsWith(OLD_PKG + '/')) {
+    return { ok: false, summary: "CleanYourTV всё ещё главный экран. Сначала переключитесь на CleanMyTV Home, затем удалите его.", warnings: [] }
+  }
+  await dropServices(OLD_PKG)
+  if ((await T.tv().shell('settings get secure screensaver_components')).includes(OLD_PKG)) {
+    await T.sh(TASK, 'settings delete secure screensaver_components')
+  }
+  const out = await T.sh(TASK, `pm uninstall ${OLD_PKG}`)
+  return out.includes('Success')
+    ? { ok: true, summary: "Лаунчер CleanYourTV удалён с ТВ.", warnings: [] }
+    : { ok: false, summary: "Телевизор не удалил лаунчер CleanYourTV.", warnings: [out.trim()] }
+}
+
+export async function useStock(): Promise<ApplyResult> {
+  const { installed } = await T.packageSets()
+  const stock = stockOnTv(installed)
+  if (!stock) return { ok: false, summary: "На ТВ не установлен известный приложению штатный лаунчер.", warnings: [] }
+  const ok = await rollback(stock)
+  // The stock launcher is back: CleanMyTV Home's remote-button service goes with it, and setupwraith comes
+  // back if the handover switched it off. The stock launcher outranks it, so Home stays put.
+  if (ok) await dropServices(HOME_PKG)
+  if (ok && wraithOff().includes(tvKey()) && installed.has(SETUPWRAITH)) {
+    await T.sh(TASK, `pm enable --user 0 ${SETUPWRAITH}`)
+    rememberWraith(false)
+  }
+  return ok
+    ? { ok, summary: `${stock} снова главный экран. CleanMyTV Home остаётся установленным: его можно выбрать в разделе «Главный экран».`, warnings: [] }
+    : { ok, summary: `Не удалось назначить ${stock} главным экраном. Выберите его в настройках главного экрана ТВ.`, warnings: [] }
+}

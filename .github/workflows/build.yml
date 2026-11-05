@@ -1,0 +1,99 @@
+name: Build
+
+# Pull requests run the cheap Linux jobs only (APK and tests). Pushes to main also build the
+# macOS and Windows installers. Artifacts are available on the workflow run.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run it replaces, so minutes go to the latest code only.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+# Build only: no repository writes or automatic publishing.
+permissions:
+  contents: read
+
+# Actions are pinned to commits (the tag is in the comment), so a moved tag cannot change a build.
+jobs:
+  apk:
+    name: Launcher APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      # JDK 17, the Android SDK and Gradle's downloads (~1 GB) are kept between runs.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .cytv-build/tools/jdk
+            .cytv-build/tools/android-sdk
+            .cytv-build/tools/gradle
+          key: cytv-tools-${{ runner.os }}-${{ hashFiles('home/**/*.gradle.kts', 'home/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: cytv-tools-${{ runner.os }}-
+      - run: npm ci
+      # Both steps fetch the upstream commit pinned in upstream.json and refuse content that doesn't match.
+      - run: npm run sync
+      # CleanMyTV Home, the launcher in home/, signed with the key in resources/signing.
+      - run: npm run home
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: launcher
+          path: |
+            resources/home.apk
+            resources/home.json
+            resources/upstream
+
+  test:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run sync
+      - name: Upstream checkout at the pinned commit (for the recovery.py parity tests)
+        run: |
+          COMMIT=$(node -p "require('./upstream.json').commit")
+          git init -q /tmp/upstream
+          git -C /tmp/upstream fetch -q --depth 1 https://github.com/Gathin23/cleanyourtv "$COMMIT"
+          git -C /tmp/upstream checkout -q FETCH_HEAD
+      - run: npm run typecheck
+      - run: UPSTREAM_DIR=/tmp/upstream npm test
+
+  app:
+    name: App (${{ matrix.os }})
+    # macOS minutes count 10x and Windows 2x on private repos, so pull requests skip this job.
+    if: github.event_name != 'pull_request'
+    needs: [apk, test]
+    strategy:
+      # One platform failing still lets the other finish, so a run shows every problem at once.
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with: { name: launcher, path: resources }
+      - run: npm run dist:${{ matrix.os == 'windows-latest' && 'win' || 'mac' }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: CleanMyTV-${{ runner.os }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+          if-no-files-found: error
