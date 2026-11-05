@@ -1,0 +1,90 @@
+name: iOS unsigned IPA
+on:
+  push:
+    branches: [bitora-ios]
+    paths: ['ios/**', '.github/workflows/ios.yml', 'build/icon.png']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: bitora-ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Test RSA identity and ADB transport
+        run: |
+          swiftc -swift-version 5 ios/Bitora/ADB.swift ios/Tests/main.swift -o ios/Tests/adb-tests
+          python3 ios/Tests/test_adb.py
+      - name: Generate Xcode project
+        run: python3 ios/generate_project.py
+      - name: Build unsigned device app
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/Bitora.xcodeproj -scheme Bitora -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO build | tee ios/build-device.log
+      - name: Build and launch in iOS simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/Bitora.xcodeproj -scheme Bitora -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/build-sim CODE_SIGNING_ALLOWED=NO build | tee ios/build-simulator.log
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for k,v in d["devices"].items() if "iOS" in k for x in v if "iPhone" in x["name"]))')
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl install "$DEVICE" ios/build-sim/Build/Products/Debug-iphonesimulator/Bitora.app
+          xcrun simctl launch "$DEVICE" io.github.userarturm.bitora.ios
+          sleep 5
+          xcrun simctl io "$DEVICE" screenshot ios/simulator.png
+          xcrun simctl spawn "$DEVICE" launchctl list | grep io.github.userarturm.bitora.ios
+      - name: Package unsigned IPA
+        run: |
+          APP=ios/build/Build/Products/Release-iphoneos/Bitora.app
+          test -f "$APP/Bitora"
+          if codesign --verify "$APP" 2>/dev/null; then echo 'Unexpected signed device app'; exit 1; fi
+          mkdir -p ios/build/package/Payload
+          cp -R "$APP" ios/build/package/Payload/
+          cd ios/build/package
+          zip -qry ../Bitora-Android-TV-iOS-0.1.0-unsigned.ipa Payload
+          cd ..
+          shasum -a 256 Bitora-Android-TV-iOS-0.1.0-unsigned.ipa > SHA256SUMS-iOS.txt
+          unzip -t Bitora-Android-TV-iOS-0.1.0-unsigned.ipa
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Bitora-iOS-unsigned
+          path: |
+            ios/build/*.ipa
+            ios/build/SHA256SUMS-iOS.txt
+            ios/simulator.png
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: iOS-build-logs
+          path: ios/*.log
+  publish:
+    if: github.ref == 'refs/heads/bitora-ios'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with: {name: Bitora-iOS-unsigned, path: ios-artifact}
+      - name: Publish unsigned iOS preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          IPA=$(find ios-artifact -name '*.ipa' -print -quit)
+          SUM=$(find ios-artifact -name 'SHA256SUMS-iOS.txt' -print -quit)
+          PNG=$(find ios-artifact -name 'simulator.png' -print -quit)
+          test -s "$IPA" && test -s "$SUM" && test -s "$PNG"
+          if gh release view ios-v0.1.0 >/dev/null 2>&1; then
+            echo 'Release exists; leaving assets unchanged.'
+          else
+            gh release create ios-v0.1.0 "$IPA" "$SUM" "$PNG" --target "$GITHUB_SHA" --title 'Bitora Android TV для iOS 0.1.0 — unsigned preview' --notes-file ios/README.md --prerelease
+          fi

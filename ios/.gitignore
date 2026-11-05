@@ -1,0 +1,10 @@
+Bitora.xcodeproj/
+Bitora/Assets.xcassets/
+Bitora/Info.plist
+build/
+Tests/adb-tests
+*.ipa
+__pycache__/
+build-sim/
+*.log
+simulator.png
