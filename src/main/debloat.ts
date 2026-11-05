@@ -15,7 +15,7 @@ export const SETUPWRAITH = 'com.google.android.tungsten.setupwraith'
 // They answer HOME too, but they are not launchers: setupwraith taking Home is the crash loop the
 // home guard exists to prevent.
 export const NOT_LAUNCHERS = [SETUPWRAITH, 'com.android.tv.settings', 'com.android.settings', 'com.android.provision']
-/** CleanMyTV Home (launcher.ts HOME_PKG; launcher.ts imports this file, so it is repeated here). */
+/** Bitora Android TV (launcher.ts HOME_PKG; launcher.ts imports this file, so it is repeated here). */
 const OUR_HOME = 'io.github.wingedpanther.cleanmytv.home'
 /** Google's launchers take Home back while they are on (#27), so the handover switches them off. */
 export const GOOGLE_LAUNCHERS = ['com.google.android.tvlauncher', 'com.google.android.apps.tv.launcherx', 'com.google.android.leanbacklauncher']
@@ -479,7 +479,7 @@ function sourceList(listId: string): { title: string; parsed: ParsedList } {
     const entries = [...commonality().entries()]
       .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
       .map(([pkg, c]) => ({ pkg, note: c.note, suggested: false }))
-    return { title: "Пользовательский список", parsed: { header: ["Список CleanMyTV, составленный из пакетов, отключаемых на других ТВ."], entries } }
+    return { title: "Пользовательский список", parsed: { header: ["Список Bitora Android TV, составленный из пакетов, отключаемых на других ТВ."], entries } }
   }
   const l = upstreamLists().find((u) => u.id === listId)
   if (!l) throw new Error(`нет такого списка: ${listId}`)
@@ -568,7 +568,7 @@ function writeSavedList(file: string, title: string, header: string[], active: s
     `# ${title}`,
     ...header.slice(1).map((h) => `# ${h}`.trimEnd()),
     '#',
-    `# Written by CleanMyTV on ${strftimeNow()}. Undo from the app, or with upstream:`,
+    `# Written by Bitora Android TV on ${strftimeNow()}. Undo from the app, or with upstream:`,
     `#   TV_HOST=<tv ip> tools/restore.sh ${file}`,
     '',
     ...active.map(line),
@@ -683,13 +683,13 @@ export async function apply(req: DebloatApplyRequest): Promise<ApplyResult> {
   // Home guard: never leave the TV with nothing that can answer Home.
   const homeAns = await T.homeAnswer()
   const homePkg = homeAns.split('/')[0]
-  // The stock launcher and setupwraith are Google TV's fallback Homes. They stay on until CleanMyTV Home
+  // The stock launcher and setupwraith are Google TV's fallback Homes. They stay on until Bitora Android TV
   // owns Home: with both off and the launcher that is left failing at boot, the TV shows a black screen
   // and can't be reached (#33). setupwraith that already owns Home is the broken state, so it may go.
   if (homePkg !== OUR_HOME && !req.forceHome) {
     const held = pkgs.filter((p) => stockLaunchers().includes(p) || (p === SETUPWRAITH && homePkg !== SETUPWRAITH))
     if (held.length) {
-      warnings.push(`Пока оставлено включённым: ${held.join(', ')}. ${held.length === 1 ? "Это" : "Это"} резервный главный экран ТВ. Установите CleanMyTV Home в разделе «Главный экран» и примените список снова.`)
+      warnings.push(`Пока оставлено включённым: ${held.join(', ')}. ${held.length === 1 ? "Это" : "Это"} резервный главный экран ТВ. Установите Bitora Android TV в разделе «Главный экран» и примените список снова.`)
       pkgs = pkgs.filter((p) => !held.includes(p))
     }
   }
@@ -697,7 +697,7 @@ export async function apply(req: DebloatApplyRequest): Promise<ApplyResult> {
     const claims = await T.homeClaimants()
     const others = claims.filter((c) => c !== homePkg && !pkgs.includes(c) && !NOT_LAUNCHERS.includes(c))
     if (!others.length) {
-      warnings.push(`Пропущен ${homePkg}: это текущий главный экран, а другой доступный лаунчер не останется включённым. Сначала установите CleanMyTV Home, затем примените список снова.`)
+      warnings.push(`Пропущен ${homePkg}: это текущий главный экран, а другой доступный лаунчер не останется включённым. Сначала установите Bitora Android TV, затем примените список снова.`)
       pkgs = pkgs.filter((p) => p !== homePkg)
     }
   }

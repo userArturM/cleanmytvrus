@@ -1,4 +1,4 @@
-// Is there a newer CleanMyTV? One request to GitHub's latest-release API, at most every 12 hours,
+// Is there a newer Bitora Android TV? One request to GitHub's latest-release API, at most every 12 hours,
 // with the answer cached in the settings file. Nothing is downloaded: the app links to the release page.
 import type { UpdateInfo } from '@shared/api'
 

@@ -151,7 +151,7 @@ fun listApps(pm: PackageManager, self: String): org.json.JSONArray {
     return out
 }
 
-/** The order from CleanMyTV first, then everything else alphabetically; hidden apps left out. */
+/** The order from Bitora Android TV first, then everything else alphabetically; hidden apps left out. */
 fun arrange(apps: List<TvApp>, cfg: HomeConfig): List<TvApp> {
     val byPkg = apps.associateBy { it.pkg }
     val first = cfg.order.mapNotNull { byPkg[it] }

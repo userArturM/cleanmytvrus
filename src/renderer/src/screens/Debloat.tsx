@@ -225,7 +225,7 @@ export function Debloat({ status, go, markDone }: ScreenProps): ReactNode {
 
           {stockHome && (
             <div className="notice warn">
-              Этот список отключает <code>{plan.homePackage}</code>— текущий главный экран. Приложение пропустит его, пока новый лаунчер не станет главным, чтобы ТВ всегда мог запустить домашний экран. Установите CleanMyTV Home в разделе «Главный экран», затем примените список ещё раз. </div>
+              Этот список отключает <code>{plan.homePackage}</code>— текущий главный экран. Приложение пропустит его, пока новый лаунчер не станет главным, чтобы ТВ всегда мог запустить домашний экран. Установите Bitora Android TV в разделе «Главный экран», затем примените список ещё раз. </div>
           )}
 
           <div className="toolbar">
@@ -360,7 +360,7 @@ export function Debloat({ status, go, markDone }: ScreenProps): ReactNode {
         <Confirm title="Восстановить этот ТВ?" confirmLabel="Восстановить" onConfirm={restore} onCancel={() => setConfirm(null)}>
           <p>
             Каждый пакет из списка вернётся к состоянию на {fmtDate(plan.record?.created)}. Пакеты, отключённые на тот момент, останутся отключёнными. Главным экраном снова станет прежний лаунчер. </p>
-          <p className="muted small">CleanMyTV Home останется установленным. При необходимости удалите его через «Настройки → Приложения» на ТВ.</p>
+          <p className="muted small">Bitora Android TV останется установленным. При необходимости удалите его через «Настройки → Приложения» на ТВ.</p>
         </Confirm>
       )}
     </>

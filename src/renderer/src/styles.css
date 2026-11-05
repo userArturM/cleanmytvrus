@@ -541,3 +541,6 @@ table.pkgs tr.dim td { opacity: 0.6; }
 .brand-name { font-size: 15px; }
 .step-label, .toggle-text { min-width: 0; overflow-wrap: anywhere; }
 .btn { white-space: normal; }
+
+.brand-logo { width: 42px; height: 42px; flex-shrink: 0; object-fit: contain; }
+.brand-name { font-size: 15px; line-height: 1.3; }

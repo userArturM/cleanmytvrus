@@ -114,7 +114,7 @@ import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
 
-// CleanMyTV's dark world: warm off-white and sand text on the green-black ground.
+// Bitora Android TV's dark world: warm off-white and sand text on the green-black ground.
 private val TEXT = Color(0xFFF0EBE5)
 private val MUTED = Color(0xFFD7CFC4)
 private val TILE = Color(0xE62D3A2E)
@@ -172,7 +172,7 @@ fun HomeScreen(visualiser: Visualiser, appsVersion: Int, open: androidx.compose.
         apps = withContext(Dispatchers.Default) { loadApps(ctx, glyphs) }
         inputs = withContext(Dispatchers.Default) { tvInputs(ctx) }
     }
-    // Animations off in the TV's settings (or from CleanMyTV): Home stops moving too.
+    // Animations off in the TV's settings (or from Bitora Android TV): Home stops moving too.
     var motion by remember { mutableStateOf(true) }
     LaunchedEffect(appsVersion) {
         motion = runCatching { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }.getOrDefault(1f) > 0f

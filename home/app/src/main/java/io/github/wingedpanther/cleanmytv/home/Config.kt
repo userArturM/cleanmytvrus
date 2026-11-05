@@ -13,7 +13,7 @@ data class ButtonMap(val code: Int, val action: String, val app: String? = null)
 /** A named group of apps: a row on the home screen, or a folder. */
 data class Group(val name: String, val apps: List<String>)
 
-/** Everything CleanMyTV can change. The desktop app sends any subset; the rest keeps its value. */
+/** Everything Bitora Android TV can change. The desktop app sends any subset; the rest keeps its value. */
 data class HomeConfig(
     // Arrangement
     val layout: String = "shelf", // shelf, split, rail
@@ -27,7 +27,7 @@ data class HomeConfig(
     // Remote buttons (KeyService)
     val buttonsOn: Boolean = false,
     val buttons: List<ButtonMap> = emptyList(),
-    // Look: CleanMyTV's dark green-and-earth world by default
+    // Look: Bitora Android TV's dark green-and-earth world by default
     val accent: Long = 0xFF4CAF50,
     val focus: String = "lift", // lift, glow, outline, none
     val background: Long = 0xFF1C2A1F,
@@ -242,7 +242,7 @@ object ConfigStore {
     private var loaded = false
 
     private fun file(ctx: Context) = File(ctx.filesDir, "config.json")
-    /** False on a fresh install, before anything was set: CleanMyTV then puts its saved copy back. */
+    /** False on a fresh install, before anything was set: Bitora Android TV then puts its saved copy back. */
     fun configured(ctx: Context) = file(ctx).exists()
     fun wallpaper(ctx: Context) = File(ctx.filesDir, "wallpaper.jpg")
     fun wallpaperUpload(ctx: Context) = File(ctx.filesDir, "wallpaper.upload")

@@ -10,7 +10,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 /**
- * App lock. The PIN is kept salted and hashed in Home's private storage; CleanMyTV can set or clear it over
+ * App lock. The PIN is kept salted and hashed in Home's private storage; Bitora Android TV can set or clear it over
  * ADB but never read it back. Unlocks live in memory only, so a restart locks everything again.
  */
 object Lock {

@@ -1,4 +1,4 @@
-// Handing Home to CleanMyTV Home and back: the launcher handover from upstream's build-and-install.sh
+// Handing Home to Bitora Android TV and back: the launcher handover from upstream's build-and-install.sh
 // (start it first, switch off the stock launcher, check where Home landed, roll back if it didn't stick),
 // plus removing the CleanYourTV launcher earlier versions of this app installed.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -10,9 +10,9 @@ import { GOOGLE_LAUNCHERS, NOT_LAUNCHERS, SETUPWRAITH, lostNetworks, stockLaunch
 import type { ApplyResult, InstallResult } from '@shared/api'
 
 const TASK = 'install'
-/** CleanMyTV Home, built from home/. */
+/** Bitora Android TV, built from home/. */
 export const HOME_PKG = 'io.github.wingedpanther.cleanmytv.home'
-/** The CleanYourTV launcher that CleanMyTV 0.1.x installed. */
+/** The CleanYourTV launcher that Bitora Android TV 0.1.x installed. */
 export const OLD_PKG = 'com.gathin.tvhome'
 const OUR_LAUNCHERS = [OLD_PKG, HOME_PKG]
 
@@ -170,7 +170,7 @@ export async function handOver(stock: string, main: string): Promise<{ failed: I
   let now: string | null = null
   try { now = await T.homeComponent() } catch { now = null }
   // Google TV 14: with the stock launcher off, setupwraith's RecoveryActivity outranks the Home preference,
-  // and Clean up keeps setupwraith on until CleanMyTV Home is Home (#40). So it goes here, once `main` has
+  // and Clean up keeps setupwraith on until Bitora Android TV is Home (#40). So it goes here, once `main` has
   // started, unless the saved Wi-Fi is its: that network would be deleted with it.
   let wraith: 'off' | 'setupwraith' | 'unknown' | null = null
   let lostWifi = 0
@@ -266,7 +266,7 @@ export async function removeOld(): Promise<ApplyResult> {
   if (!installed.has(OLD_PKG)) return { ok: true, summary: "Лаунчер CleanYourTV не установлен на этом ТВ.", warnings: [] }
   const home = await T.homeComponent()
   if (home?.startsWith(OLD_PKG + '/')) {
-    return { ok: false, summary: "CleanYourTV всё ещё главный экран. Сначала переключитесь на CleanMyTV Home, затем удалите его.", warnings: [] }
+    return { ok: false, summary: "CleanYourTV всё ещё главный экран. Сначала переключитесь на Bitora Android TV, затем удалите его.", warnings: [] }
   }
   await dropServices(OLD_PKG)
   if ((await T.tv().shell('settings get secure screensaver_components')).includes(OLD_PKG)) {
@@ -283,7 +283,7 @@ export async function useStock(): Promise<ApplyResult> {
   const stock = stockOnTv(installed)
   if (!stock) return { ok: false, summary: "На ТВ не установлен известный приложению штатный лаунчер.", warnings: [] }
   const ok = await rollback(stock)
-  // The stock launcher is back: CleanMyTV Home's remote-button service goes with it, and setupwraith comes
+  // The stock launcher is back: Bitora Android TV's remote-button service goes with it, and setupwraith comes
   // back if the handover switched it off. The stock launcher outranks it, so Home stays put.
   if (ok) await dropServices(HOME_PKG)
   if (ok && wraithOff().includes(tvKey()) && installed.has(SETUPWRAITH)) {
@@ -291,6 +291,6 @@ export async function useStock(): Promise<ApplyResult> {
     rememberWraith(false)
   }
   return ok
-    ? { ok, summary: `${stock} снова главный экран. CleanMyTV Home остаётся установленным: его можно выбрать в разделе «Главный экран».`, warnings: [] }
+    ? { ok, summary: `${stock} снова главный экран. Bitora Android TV остаётся установленным: его можно выбрать в разделе «Главный экран».`, warnings: [] }
     : { ok, summary: `Не удалось назначить ${stock} главным экраном. Выберите его в настройках главного экрана ТВ.`, warnings: [] }
 }

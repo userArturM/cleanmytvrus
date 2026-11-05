@@ -1,8 +1,8 @@
 {
   "name": "cleanmytvrus",
-  "productName": "CleanMyTV Rus",
-  "version": "0.6.1",
-  "description": "Русская версия CleanMyTV: очистка Android TV и настройка главного экрана.",
+  "productName": "Bitora Android TV",
+  "version": "0.7.0",
+  "description": "Bitora Android TV — очистка Android TV и настройка главного экрана.",
   "license": "MIT",
   "author": "wingedpanther",
   "homepage": "https://github.com/userArturM/cleanmytvrus",

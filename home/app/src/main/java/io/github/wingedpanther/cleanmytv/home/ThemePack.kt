@@ -8,11 +8,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** A theme CleanMyTV put on the TV: its look, and a few pictures drawn for it. */
+/** A theme Bitora Android TV put on the TV: its look, and a few pictures drawn for it. */
 data class PackTheme(val id: String, val name: String, val look: JSONObject, val pictures: Int)
 
 /**
- * The built-in themes, so the TV can switch them without the computer: CleanMyTV draws each theme's
+ * The built-in themes, so the TV can switch them without the computer: Bitora Android TV draws each theme's
  * pictures and uploads them once ("Загрузите темы на ТВ"). They go into themes.upload/ and replace
  * themes/ only when the last one has arrived, so a broken upload leaves the old set alone.
  */

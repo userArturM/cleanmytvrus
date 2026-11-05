@@ -212,7 +212,7 @@ export function Setup({ status, go, tvs, refreshTvs }: ScreenProps): ReactNode {
           )}
           {status.probe.sdk > 0 && status.probe.sdk < 28 && (
             <div className="notice warn" style={{ marginTop: 16, marginBottom: 0 }}>
-              На этом ТВ Android {status.probe.release} (API {status.probe.sdk}). CleanMyTV Home требует Android 9 (API 28) или новее, поэтому установка главного экрана недоступна. Очистка остаётся доступной и обратимой: приложения не удаляются. </div>
+              На этом ТВ Android {status.probe.release} (API {status.probe.sdk}). Bitora Android TV требует Android 9 (API 28) или новее, поэтому установка главного экрана недоступна. Очистка остаётся доступной и обратимой: приложения не удаляются. </div>
           )}
           <div className="row" style={{ marginTop: 16 }}>
             <button className="btn primary" onClick={() => go('debloat')}>

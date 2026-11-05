@@ -204,7 +204,7 @@ export function installMock(): void {
       return items
     },
     async bugReport() {
-      return 'CleanMyTV 0.0.0-dev, darwin 25.0.0 arm64\nTV: Sony BRAVIA 4K VH2 (device BRAVIA_VH2, product BRAVIA_VH2_EU), Android 12 (SDK 31), build mock'
+      return 'Bitora Android TV 0.0.0-dev, darwin 25.0.0 arm64\nTV: Sony BRAVIA 4K VH2 (device BRAVIA_VH2, product BRAVIA_VH2_EU), Android 12 (SDK 31), build mock'
     },
     download: (tool) => fakeDownload(tool),
     async lists() {
@@ -288,7 +288,7 @@ export function installMock(): void {
       homeInstalled = true
       homeIsHome = true
       launcherHome = false
-      return ok('CleanMyTV Home is Home now. Press Home on the remote to see it.')
+      return ok('Bitora Android TV is Home now. Press Home on the remote to see it.')
     },
     async useHome() {
       await wait(600)

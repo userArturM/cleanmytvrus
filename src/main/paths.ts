@@ -3,7 +3,7 @@ import { join } from 'node:path'
 let resourcesDir = join(process.cwd(), 'resources')
 let dataDir = join(process.cwd(), '.cytv-data')
 
-/** resources: bundled upstream lists, CleanMyTV Home's APK and the signing key. data: the app's own writable folder. */
+/** resources: bundled upstream lists, Bitora Android TV's APK and the signing key. data: the app's own writable folder. */
 export function configurePaths(resources: string, data: string): void {
   resourcesDir = resources
   dataDir = data
@@ -20,6 +20,6 @@ export const paths = {
   get adbKey(): string { return join(dataDir, 'adbkey') },
   get tools(): string { return join(dataDir, 'tools') },
   get settings(): string { return join(dataDir, 'settings.json') },
-  /** A copy of each TV's CleanMyTV Home settings and wallpaper, put back if a fresh install starts empty. */
+  /** A copy of each TV's Bitora Android TV settings and wallpaper, put back if a fresh install starts empty. */
   get homeBackups(): string { return join(dataDir, 'home-backups') }
 }

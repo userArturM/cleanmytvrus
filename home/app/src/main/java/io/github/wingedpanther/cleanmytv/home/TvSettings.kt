@@ -14,7 +14,7 @@ import java.net.Inet4Address
 
 /**
  * The TV settings the Quick settings panel changes. Most need WRITE_SECURE_SETTINGS (and the system table
- * WRITE_SETTINGS), which CleanMyTV grants over ADB when it installs Home; without them a row only shows
+ * WRITE_SETTINGS), which Bitora Android TV grants over ADB when it installs Home; without them a row only shows
  * its value and OK opens the TV's own screen instead.
  */
 object TvSettings {
@@ -130,7 +130,7 @@ object TvSettings {
 
     fun debuggingOn(ctx: Context) = runCatching { Settings.Global.getInt(ctx.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 }.getOrDefault(false)
 
-    /** CleanMyTV's Finish step, from the TV: ADB and wireless debugging off. CleanMyTV can't connect after this. */
+    /** Bitora Android TV's Finish step, from the TV: ADB and wireless debugging off. Bitora Android TV can't connect after this. */
     fun debuggingOff(ctx: Context) = guarded("debugging") {
         runCatching { Settings.Global.putInt(ctx.contentResolver, "adb_wifi_enabled", 0) }
         Settings.Global.putInt(ctx.contentResolver, Settings.Global.ADB_ENABLED, 0)

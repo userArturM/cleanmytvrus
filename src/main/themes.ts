@@ -1,4 +1,4 @@
-// Themes for CleanMyTV Home (src/shared/themes.ts): apply one, put the old look back, or save the TV's
+// Themes for Bitora Android TV (src/shared/themes.ts): apply one, put the old look back, or save the TV's
 // look to a file. Before the first theme on a TV, its look and wallpaper are saved on this computer,
 // and stay there until the owner puts them back or forgets them, through restarts of the app.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -86,6 +86,6 @@ export async function save(name: string, pick: (fileName: string) => Promise<str
   return {
     ok: true,
     summary: `Сохранено «${theme.name}». Загрузите на любом ТВ в разделе «Оформление и обои → Темы».`,
-    warnings: missing ? ["Обои не включены в файл: старая версия CleanMyTV не сохранила копию. Выберите их заново и повторите сохранение."] : []
+    warnings: missing ? ["Обои не включены в файл: старая версия Bitora Android TV не сохранила копию. Выберите их заново и повторите сохранение."] : []
   }
 }

@@ -43,7 +43,7 @@ export interface FakeTv {
   screenshot: Buffer
   /** The launcher's Android/data folder: missing ones only appear once the launcher has run. */
   appDir: 'ok' | 'missing' | 'denied'
-  /** CleanMyTV Home's settings, as its ConfigProvider holds them. */
+  /** Bitora Android TV's settings, as its ConfigProvider holds them. */
   homeConfig: Record<string, unknown>
   /** Home preference changes are ignored, as on TVs where another app grabs Home back. */
   homeStuck?: boolean
@@ -52,13 +52,13 @@ export interface FakeTv {
    * launcherx (2), then setupwraith's RecoveryActivity (1), then any launcher set as Home (0).
    */
   homeOutranks?: string[]
-  /** CleanMyTV Home was installed fresh and has no settings file yet. */
+  /** Bitora Android TV was installed fresh and has no settings file yet. */
   homeFresh?: boolean
   /** ro.build.version.sdk; 31 when unset. */
   sdk?: string
   /** ro.product.manufacturer; Sony when unset. */
   manufacturer?: string
-  /** CleanMyTV Home's versionName once installed; 1.0.0 when unset. */
+  /** Bitora Android TV's versionName once installed; 1.0.0 when unset. */
   homeVersion?: string
   /** Free space on /data in KB; df answers nothing when unset. pm install needs 10 MB of it. */
   freeKb?: number

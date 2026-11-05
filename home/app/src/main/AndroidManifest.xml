@@ -5,14 +5,14 @@
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <!-- The music visualiser reads the TV's mixed output. CleanMyTV grants this over ADB. -->
+    <!-- The music visualiser reads the TV's mixed output. Bitora Android TV grants this over ADB. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Weather next to the clock, from Open-Meteo. Nothing else goes online. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The Quick settings panel's network row: Wi-Fi or Ethernet, and the TV's address. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- The Quick settings panel: screensaver, sleep, Private DNS, animations, clock. CleanMyTV grants
+    <!-- The Quick settings panel: screensaver, sleep, Private DNS, animations, clock. Bitora Android TV grants
          these over ADB when it installs Home; without them the panel opens the TV's own screens. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
@@ -30,9 +30,9 @@
     </queries>
 
     <application
-        android:label="CleanMyTV Home"
-        android:banner="@drawable/banner"
-        android:icon="@drawable/banner"
+        android:label="Bitora Android TV"
+        android:banner="@drawable/tv_banner"
+        android:icon="@drawable/app_icon"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
         android:supportsRtl="true">
 
@@ -67,7 +67,7 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
             android:screenOrientation="landscape" />
 
-        <!-- Remote buttons mapped in CleanMyTV, and the app lock's guard. Off until the desktop app turns it on over ADB. -->
+        <!-- Remote buttons mapped in Bitora Android TV, and the app lock's guard. Off until the desktop app turns it on over ADB. -->
         <service
             android:name=".KeyService"
             android:exported="false"
@@ -80,7 +80,7 @@
         </service>
 
         <!-- Lets Home see what other apps are playing, for the Now playing section. It reads no
-             notifications. CleanMyTV switches it on over ADB only when that section is on. -->
+             notifications. Bitora Android TV switches it on over ADB only when that section is on. -->
         <service
             android:name=".NowPlayingListener"
             android:exported="false"

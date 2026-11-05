@@ -203,7 +203,7 @@ export async function get(tool: ToolId): Promise<ApplyResult> {
   }
 }
 
-/** The signing key that ships in resources/signing, so every build of CleanMyTV Home installs over the others. */
+/** The signing key that ships in resources/signing, so every build of Bitora Android TV installs over the others. */
 export const KEYSTORE = { password: 'cleanyourtv', alias: 'cleanyourtv' }
 
 // ---- Wireless debugging pairing -------------------------------------------------------------------

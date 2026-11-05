@@ -1,6 +1,6 @@
 // The guided "Clean & launch" run (#9): one button that walks the happy path —
 // pick the best-matching list, disable its suggested packages, install
-// CleanMyTV Home, and land on the Home screen step — while keeping every step
+// Bitora Android TV, and land on the Home screen step — while keeping every step
 // inspectable and skippable. It composes the same IPC calls the individual
 // screens use; no new main-process behaviour.
 import { useEffect, useRef, useState } from 'react'
@@ -50,7 +50,7 @@ export default function Guided({ go, markDone }: ScreenProps): React.ReactElemen
     try {
       if (!skipDebloat) {
         setPhase({ t: 'run', step: `Отключение ${p.disable.length} пакетов из «${p.plan.title}"` })
-        // No safety overrides: the stock launcher and setupwraith stay on until CleanMyTV Home is Home,
+        // No safety overrides: the stock launcher and setupwraith stay on until Bitora Android TV is Home,
         // and the Wi-Fi check runs (#33).
         const r = await window.cytv.applyDebloat({ listId: p.plan.listId, disable: p.disable, enable: [] })
         if (!r.ok) throw new Error(r.summary)
@@ -68,17 +68,17 @@ export default function Guided({ go, markDone }: ScreenProps): React.ReactElemen
       }
       const outdated = before.installed && before.bundledVersion && before.versionName !== before.bundledVersion
       if (!before.isHome || outdated) {
-        setPhase({ t: 'run', step: "Установка CleanMyTV Home" })
+        setPhase({ t: 'run', step: "Установка Bitora Android TV" })
         const r = await window.cytv.installHome()
         if (!r.ok) throw new Error(r.summary + (r.stockChoices ? "Откройте раздел «Главный экран» и выберите его там." : ''))
-        notes.push("CleanMyTV Home установлен и назначен главным экраном")
+        notes.push("Bitora Android TV установлен и назначен главным экраном")
         if (alive.current) markDone('home')
       } else {
-        notes.push("CleanMyTV Home уже главный экран — оставлен без изменений")
+        notes.push("Bitora Android TV уже главный экран — оставлен без изменений")
       }
 
       if (!skipDebloat) {
-        // What the first pass kept on because CleanMyTV Home wasn't Home yet.
+        // What the first pass kept on because Bitora Android TV wasn't Home yet.
         const plan = await window.cytv.plan(p.plan.listId)
         const left = plan.entries.filter((e) => e.state === 'enabled' && p.disable.includes(e.pkg)).map((e) => e.pkg)
         if (left.length) {
@@ -100,7 +100,7 @@ export default function Guided({ go, markDone }: ScreenProps): React.ReactElemen
     <>
       <h1>Очистить и настроить</h1>
       <p className="muted">
-        Всё одной кнопкой: подходящий список для вашего ТВ, отключение рекомендованных пакетов, установка CleanMyTV Home и назначение его главным экраном. Затем откроется настройка оформления. Приложения не удаляются; каждый шаг также доступен отдельно в боковом меню. </p>
+        Всё одной кнопкой: подходящий список для вашего ТВ, отключение рекомендованных пакетов, установка Bitora Android TV и назначение его главным экраном. Затем откроется настройка оформления. Приложения не удаляются; каждый шаг также доступен отдельно в боковом меню. </p>
 
       {phase.t === 'plan' && <Busy text="Чтение сведений о ТВ и подбор списка" />}
 
@@ -111,7 +111,7 @@ export default function Guided({ go, markDone }: ScreenProps): React.ReactElemen
             <p style={{ margin: '8px 0' }}>
               Список: <b>{phase.plan.title}</b> — наиболее подходящий для вашего ТВ. </p>
             <p style={{ margin: '8px 0' }}>
-              Будет отключено <b>{phase.disable.length} пакетов</b> (рекомендации списка, выбранные по умолчанию в разделе «Очистка»), затем будет установлен и назначен главным экраном CleanMyTV Home. </p>
+              Будет отключено <b>{phase.disable.length} пакетов</b> (рекомендации списка, выбранные по умолчанию в разделе «Очистка»), затем будет установлен и назначен главным экраном Bitora Android TV. </p>
             <p className="muted small" style={{ margin: 0 }}>
               Восстановление вернёт каждый пакет к текущему состоянию. Штатный лаунчер можно вернуть в любой момент в разделе «Главный экран». </p>
           </div>

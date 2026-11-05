@@ -1,3 +1,4 @@
+import bitoraLogo from './assets/bitora-logo.png'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { ConnStatus, HomeStatus, KnownTv, UpdateInfo } from '@shared/api'
 import { LogDrawer } from './components/LogDrawer'
@@ -50,7 +51,7 @@ export default function App(): ReactNode {
   const [done, setDone] = useState<Set<StepId>>(new Set())
   const [tvs, setTvs] = useState<KnownTv[]>([])
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
-  // The TV runs an older CleanMyTV Home than this app carries.
+  // The TV runs an older Bitora Android TV than this app carries.
   const [homeBehind, setHomeBehind] = useState(false)
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function App(): ReactNode {
       window.cytv.reconnect().then(async (r) => {
         if (r?.state !== 'connected') return
         // A TV that already runs the clean launcher is here to be customised: open that step.
-        // A TV that already runs CleanMyTV Home is here to be customised: open that step.
+        // A TV that already runs Bitora Android TV is here to be customised: open that step.
         const hs = await window.cytv.homeStatus().catch(() => null)
         if (hs?.isHome) {
           setDone((prev) => new Set(prev).add('home'))
@@ -131,8 +132,8 @@ export default function App(): ReactNode {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden />
-          <span className="brand-name">CleanMyTV Rus</span>
+          <img className="brand-logo" src={bitoraLogo} alt="" />
+          <span className="brand-name">Bitora Android TV</span>
         </div>
         {currentTv?.thumb && (
           <button className="sidebar-tv" onClick={() => setStep('setup')} title="Этот телевизор. Откройте «Подключение», чтобы выбрать другой." style={{ all: 'unset', cursor: 'pointer', display: 'block', marginBottom: 10 }}>
@@ -169,7 +170,7 @@ export default function App(): ReactNode {
             </svg>
             <span>userArturM/cleanmytvrus</span>
           </a>
-          <div className="gh-ver">CleanMyTV v{version} · MIT</div>
+          <div className="gh-ver">Bitora Android TV v{version} · MIT</div>
           {update?.available && (
             <a className="update-link" href={update.url} target="_blank" rel="noreferrer">
               Версия {update.latest} доступна. Скачать </a>

@@ -36,7 +36,7 @@ class ConfigProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
         val uid = Binder.getCallingUid()
         if (uid != SHELL_UID && uid != ROOT_UID && uid != Process.myUid()) {
-            throw SecurityException("Только ADB может изменять CleanMyTV Home")
+            throw SecurityException("Только ADB может изменять Bitora Android TV")
         }
         val ctx = requireNotNull(context)
         val out = Bundle()

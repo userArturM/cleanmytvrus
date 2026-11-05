@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Android only lists other apps' media sessions to a notification listener. This one reads no
- * notifications; it exists so Home may ask. CleanMyTV switches it on over ADB with the Now playing section.
+ * notifications; it exists so Home may ask. Bitora Android TV switches it on over ADB with the Now playing section.
  */
 class NowPlayingListener : NotificationListenerService()
 

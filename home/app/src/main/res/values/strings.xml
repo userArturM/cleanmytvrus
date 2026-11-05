@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="key_service_label">CleanMyTV Home: кнопки пульта и блокировка приложений</string>
-    <string name="key_service_description">Назначает кнопкам пульта выбранные в CleanMyTV действия и запрашивает PIN-код при запуске заблокированного приложения. Остальные кнопки работают как прежде. Служба видит только название открытого приложения, но не его содержимое.</string>
-    <string name="now_playing_label">CleanMyTV Home: сейчас играет</string>
+    <string name="key_service_label">Bitora Android TV: кнопки пульта и блокировка приложений</string>
+    <string name="key_service_description">Назначает кнопкам пульта выбранные в Bitora Android TV действия и запрашивает PIN-код при запуске заблокированного приложения. Остальные кнопки работают как прежде. Служба видит только название открытого приложения, но не его содержимое.</string>
+    <string name="now_playing_label">Bitora Android TV: сейчас играет</string>
 </resources>

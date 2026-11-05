@@ -29,7 +29,7 @@ writeFileSync(join(resources, 'home.apk'), randomBytes(100 * 1024))
 writeFileSync(join(resources, 'home.json'), JSON.stringify({ versionName: '1.0.0' }))
 configurePaths(resources, join(home, 'data'))
 
-describe('CleanMyTV Home', () => {
+describe('Bitora Android TV', () => {
   let tv: FakeTv
   let server: Server
   beforeAll(async () => {
@@ -57,7 +57,7 @@ describe('CleanMyTV Home', () => {
     expect(await H.status()).toMatchObject({ installed: true, isHome: true, versionName: '1.0.0', bundledVersion: '1.0.0', oldLauncher: false })
   })
 
-  it('gives Home back to the stock launcher, then switches to CleanMyTV Home again', async () => {
+  it('gives Home back to the stock launcher, then switches to Bitora Android TV again', async () => {
     expect((await L.useStock()).ok).toBe(true)
     expect(tv.home).toBe('com.google.android.apps.tv.launcherx/.home.HomeActivity')
     expect(tv.packages.get('com.google.android.apps.tv.launcherx')).toBe('enabled')
@@ -92,7 +92,7 @@ describe('CleanMyTV Home', () => {
     expect((await H.install()).ok).toBe(true)
   })
 
-  it('reads and changes CleanMyTV Home settings live, and refuses bad values', async () => {
+  it('reads and changes Bitora Android TV settings live, and refuses bad values', async () => {
     const first = await H.readConfig()
     expect(first).toMatchObject({ accent: '#FF3000', focus: 'glow', visualiser: true, columns: 6, has_wallpaper: false })
     const next = await H.setConfig({ accent: '#2ec4b6', focus: 'outline', columns: 12, viz_style: 'mirror', order: ['com.netflix.ninja'] })
@@ -302,10 +302,10 @@ describe('CleanMyTV Home', () => {
   it('describes the TV for a bug report without its address or the owner\'s settings', async () => {
     await H.setConfig({ greeting: 'Hello Sam', weather_place: 'Dublin' })
     const text = await bugReport('9.9.9')
-    expect(text).toMatch(/^CleanMyTV 9\.9\.9, /)
+    expect(text).toMatch(/^Bitora Android TV 9\.9\.9, /)
     expect(text).toContain('ТВ: Sony BRAVIA 4K VH2')
     expect(text).toMatch(/Главный экран: \S+\/\S+/)
-    expect(text).toMatch(/CleanMyTV Home: \S+ установлен/)
+    expect(text).toMatch(/Bitora Android TV: \S+ установлен/)
     for (const secret of [T.host(), 'Sam', 'Dublin']) expect(text).not.toContain(secret)
   })
 
@@ -328,20 +328,20 @@ describe('CleanMyTV Home', () => {
     expect(tv.commands.at(-1)).toBe('cmd notification allow_listener io.github.wingedpanther.cleanmytv.home/io.github.wingedpanther.cleanmytv.home.NowPlayingListener')
   })
 
-  it('gives Home back to the stock launcher from CleanMyTV Home', async () => {
+  it('gives Home back to the stock launcher from Bitora Android TV', async () => {
     expect((await L.useStock()).ok).toBe(true)
     expect(tv.home).toBe('com.google.android.apps.tv.launcherx/.home.HomeActivity')
     expect(tv.packages.get('com.google.android.apps.tv.launcherx')).toBe('enabled')
   })
 
-  it('switches the stock launcher off when using an installed CleanMyTV Home (#27)', async () => {
+  it('switches the stock launcher off when using an installed Bitora Android TV (#27)', async () => {
     const r = await L.switchTo('io.github.wingedpanther.cleanmytv.home/.MainActivity')
     expect(r.ok).toBe(true)
     expect(tv.home).toBe('io.github.wingedpanther.cleanmytv.home/.MainActivity')
     expect(tv.packages.get('com.google.android.apps.tv.launcherx')).toBe('disabled')
   })
 
-  it('switches setupwraith off only once CleanMyTV Home is Home (#33)', async () => {
+  it('switches setupwraith off only once Bitora Android TV is Home (#33)', async () => {
     tv.packages.set(D.SETUPWRAITH, 'enabled')
     await L.useStock()
     let r = await D.apply({ listId: 'custom', disable: [D.SETUPWRAITH], enable: [] })
@@ -410,7 +410,7 @@ describe('CleanMyTV Home', () => {
       const before = tv.commands.length
       const r = await H.install()
       expect(r.ok).toBe(false)
-      expect(r.summary).toMatch(/недостаточно места: 0.4 МБ свободно и для CleanMyTV Home нужно около 0.5 МБ.*Удалите ненужное приложение/)
+      expect(r.summary).toMatch(/недостаточно места: 0.4 МБ свободно и для Bitora Android TV нужно около 0.5 МБ.*Удалите ненужное приложение/)
       expect(tv.commands.slice(before).some((c) => c.startsWith('pm install') || c.includes('cmtv-home.apk.b64'))).toBe(false)
     })
 
@@ -465,7 +465,7 @@ describe('stock launchers other than Google\'s (#39)', () => {
     expect(D.stockLaunchers()).not.toContain('com.android.tv.settings')
   })
 
-  it('makes CleanMyTV Home Home and leaves a vendor launcher on, then gives Home back to it', async () => {
+  it('makes Bitora Android TV Home and leaves a vendor launcher on, then gives Home back to it', async () => {
     const r = await H.install()
     expect(r.ok).toBe(true)
     expect(tv.home).toBe(OURS)
@@ -577,9 +577,9 @@ describe('theme files', () => {
     const t = { name: 'Neon / night', look: { accent: '#FF3000', columns: 8 } as never, wallpaper: null }
     expect(parseTheme(themeToFile(t))).toEqual({ name: 'Neon / night', look: { accent: '#FF3000' }, wallpaper: null })
     expect(themeFileName('Neon / night')).toBe('Neon - night.cmtvtheme')
-    expect(() => parseTheme('{"look":{}}')).toThrow(/не файл темы CleanMyTV/)
-    expect(() => parseTheme('not json')).toThrow(/не файл темы CleanMyTV/)
-    expect(() => parseTheme('{"format":"cleanmytv-theme","version":2}')).toThrow(/более новой версией CleanMyTV/)
+    expect(() => parseTheme('{"look":{}}')).toThrow(/не файл темы Bitora Android TV/)
+    expect(() => parseTheme('not json')).toThrow(/не файл темы Bitora Android TV/)
+    expect(() => parseTheme('{"format":"cleanmytv-theme","version":2}')).toThrow(/более новой версией Bitora Android TV/)
     expect(() => parseTheme('{"format":"cleanmytv-theme","version":1,"wallpaper":"<script>"}')).toThrow(/повреждены/)
   })
 

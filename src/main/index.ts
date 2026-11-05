@@ -1,5 +1,5 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } from 'electron'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { configurePaths, paths } from './paths'
@@ -140,7 +140,7 @@ const handlers: Omit<Handlers, 'onLog' | 'onProgress' | 'onStatus'> = {
   installHome: (stock) => home.install(typeof stock === 'string' ? stock : undefined),
   useHome: async (stock) => {
     const st = await home.status()
-    if (!st.installed) return { ok: false, summary: "CleanMyTV Home ещё не установлен.", warnings: [] }
+    if (!st.installed) return { ok: false, summary: "Bitora Android TV ещё не установлен.", warnings: [] }
     return launcher.switchTo(`${launcher.HOME_PKG}/.MainActivity`, typeof stock === 'string' ? stock : undefined)
   },
   homeApps: () => home.apps(),
@@ -161,7 +161,7 @@ const handlers: Omit<Handlers, 'onLog' | 'onProgress' | 'onStatus'> = {
   forgetThemeBackup: async () => themes.forget(),
   saveHomeTheme: (name) =>
     themes.save(String(name ?? ''), async (n) => {
-      const opts = { title: "Сохранить тему", defaultPath: join(app.getPath('documents'), themeFileName(n)), filters: [{ name: "Тема CleanMyTV", extensions: [THEME_EXT] }] }
+      const opts = { title: "Сохранить тему", defaultPath: join(app.getPath('documents'), themeFileName(n)), filters: [{ name: "Тема Bitora Android TV", extensions: [THEME_EXT] }] }
       const r = win && !win.isDestroyed() ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
       return r.canceled || !r.filePath ? null : r.filePath
     }),
@@ -201,7 +201,8 @@ function createWindow(): void {
     height: 820,
     minWidth: 960,
     minHeight: 640,
-    title: 'CleanMyTV Rus',
+    title: 'Bitora Android TV',
+    icon: join(app.getAppPath(), 'build/icon.png'),
     backgroundColor: '#FFFFFF',
     show: false,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, webviewTag: false }
@@ -220,6 +221,9 @@ function createWindow(): void {
 }
 
 // One copy at a time: two would race on the key file and on the same TV connection.
+// Keep the previous installation's ADB keys, saved TVs and backups after renaming.
+const oldData = ['CleanMyTV Rus', 'cleanmytvrus'].map((name) => join(app.getPath('appData'), name))
+app.setPath('userData', oldData.find((dir) => existsSync(dir)) ?? oldData[1])
 const primary = app.requestSingleInstanceLock()
 if (!primary) app.quit()
 app.on('second-instance', () => {
@@ -246,9 +250,9 @@ app.whenReady().then(() => {
     })
   }
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(process.platform === 'darwin' ? [{ label: 'CleanMyTV Rus', submenu: [
-      { role: 'about' as const, label: 'О CleanMyTV Rus' },
-      { role: 'hide' as const, label: 'Скрыть CleanMyTV Rus' },
+    ...(process.platform === 'darwin' ? [{ label: 'Bitora Android TV', submenu: [
+      { role: 'about' as const, label: 'О Bitora Android TV' },
+      { role: 'hide' as const, label: 'Скрыть Bitora Android TV' },
       { role: 'quit' as const, label: 'Выйти' }
     ] }] : []),
     { label: 'Файл', submenu: [{ role: 'close', label: 'Закрыть окно' }, { role: 'quit', label: 'Выйти' }] },

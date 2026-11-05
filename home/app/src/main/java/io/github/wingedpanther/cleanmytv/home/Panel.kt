@@ -53,7 +53,7 @@ private val P_PANEL = Color(0xF51C2A1F)
 
 /**
  * Quick settings, down the right edge: the settings people change most, set right here with left and right.
- * Rows CleanMyTV couldn't get permission for show their value and open the TV's own screen.
+ * Rows Bitora Android TV couldn't get permission for show their value and open the TV's own screen.
  */
 @Composable
 fun SettingsPanel(accent: Color, onClose: () -> Unit) {
@@ -107,7 +107,7 @@ fun SettingsPanel(accent: Color, onClose: () -> Unit) {
                         PanelRow("Пульты и Bluetooth", "Открыть", null, accent) { quickActions()["bluetooth"]?.let { a -> resolve(ctx, a)?.let { open(it) } } }
                     }
                     if (adb) item("adb") {
-                        PanelRow("Отладка", if (armOff) "Нажмите OK ещё раз, чтобы отключить" else "Вкл.", "После отключения CleanMyTV не сможет подключиться", accent) {
+                        PanelRow("Отладка", if (armOff) "Нажмите OK ещё раз, чтобы отключить" else "Вкл.", "После отключения Bitora Android TV не сможет подключиться", accent) {
                             if (armOff) { TvSettings.debuggingOff(ctx); armOff = false; tick++ } else armOff = true
                         }
                     }

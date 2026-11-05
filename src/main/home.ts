@@ -1,4 +1,4 @@
-// CleanMyTV Home, the launcher in home/. Its settings and wallpaper live in its own private
+// Bitora Android TV, the launcher in home/. Its settings and wallpaper live in its own private
 // storage and come in over ADB through its ConfigProvider (`content call`), so there's no shared folder
 // to fail (#20) and nothing to reread after a reboot (#21). Changes show on the TV straight away.
 import { createHash } from 'node:crypto'
@@ -64,7 +64,7 @@ const BOOLS = ['show_names', 'name_focus', 'follow_colour', 'pin_focus', 'tilt',
 const KEY_SERVICE = `${HOME_PKG}/${HOME_PKG}.KeyService`
 /** Lets the launcher see other apps' media sessions; on only while the Now playing section is. */
 const NOW_LISTENER = `${HOME_PKG}/${HOME_PKG}.NowPlayingListener`
-/** Android 9: CleanMyTV Home's minSdk (home/app/build.gradle.kts). */
+/** Android 9: Bitora Android TV's minSdk (home/app/build.gradle.kts). */
 export const MIN_SDK = 28
 // Above Android's own codes: TCL remotes send 4001 and up (#47).
 const MAX_KEY = 65535
@@ -96,12 +96,12 @@ export async function status(): Promise<HomeStatus> {
   }
 }
 
-/** Why CleanMyTV Home can't go on the connected TV, or null when it can. */
+/** Why Bitora Android TV can't go on the connected TV, or null when it can. */
 export function unsupported(): string | null {
   const probe = T.getStatus().probe
   // An unknown SDK (0) is let through: pm install gives its own answer.
   if (!probe?.sdk || probe.sdk >= MIN_SDK) return null
-  return `CleanMyTV Home требует Android 9 или новее. На этом ТВ Android ${probe.release || '?'} (SDK ${probe.sdk}). Очистка остаётся доступной.`
+  return `Bitora Android TV требует Android 9 или новее. На этом ТВ Android ${probe.release || '?'} (SDK ${probe.sdk}). Очистка остаётся доступной.`
 }
 
 // "Requested internal only, but not enough space" on older Android, INSTALL_FAILED_INSUFFICIENT_STORAGE on newer (#48).
@@ -110,13 +110,13 @@ const SPACE_RE = /not enough space|INSUFFICIENT_STORAGE/i
 function noSpace(free: number, need: number): string {
   const mb = (kb: number): string => `${Math.max(0, kb / 1024).toFixed(kb < 10240 ? 1 : 0)} МБ`
   const has = Number.isFinite(free) ? `${mb(free)} свободно и ` : ''
-  return `На ТВ недостаточно места: ${has}для CleanMyTV Home нужно около ${mb(need)}. Кеш всех приложений уже очищен. Удалите ненужное приложение и повторите попытку.`
+  return `На ТВ недостаточно места: ${has}для Bitora Android TV нужно около ${mb(need)}. Кеш всех приложений уже очищен. Удалите ненужное приложение и повторите попытку.`
 }
 
-/** Installs or updates CleanMyTV Home, starts it, and only then makes it Home. */
+/** Installs or updates Bitora Android TV, starts it, and only then makes it Home. */
 export async function install(chosen?: string): Promise<InstallResult> {
   if (!existsSync(paths.bundledHomeApk)) {
-    return { ok: false, summary: "В этой сборке нет встроенной копии CleanMyTV Home.", warnings: [] }
+    return { ok: false, summary: "В этой сборке нет встроенной копии Bitora Android TV.", warnings: [] }
   }
   const tooOld = unsupported()
   if (tooOld) return { ok: false, summary: tooOld, warnings: [] }
@@ -161,7 +161,7 @@ export async function install(chosen?: string): Promise<InstallResult> {
   await T.sh(TASK, `pm grant ${HOME_PKG} android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; appops set ${HOME_PKG} WRITE_SETTINGS allow 2>/dev/null; echo settings-granted`)
   const start = await T.sh(TASK, `am start -W -n ${MAIN}`)
   if (!start.includes('Status: ok') || /^Error/im.test(start)) {
-    return { ok: false, summary: "CleanMyTV Home не запустился. Главный экран не изменён.", warnings: [start.trim()] }
+    return { ok: false, summary: "Bitora Android TV не запустился. Главный экран не изменён.", warnings: [start.trim()] }
   }
   const { failed, notes } = await handOver(toSwitchOff(stock), MAIN)
   if (failed) return failed
@@ -173,7 +173,7 @@ export async function install(chosen?: string): Promise<InstallResult> {
   const restored = cfg?.configured === false ? await restoreBackup() : false
   return {
     ok: true,
-    summary: "CleanMyTV Home назначен главным экраном. Нажмите Home на пульте." + (restored ? "При запуске настройки отсутствовали, поэтому они и обои восстановлены из копии на этом компьютере." : ''),
+    summary: "Bitora Android TV назначен главным экраном. Нажмите Home на пульте." + (restored ? "При запуске настройки отсутствовали, поэтому они и обои восстановлены из копии на этом компьютере." : ''),
     warnings: notes
   }
 }
@@ -181,7 +181,7 @@ export async function install(chosen?: string): Promise<InstallResult> {
 /** What the launcher answered, with anything missing or odd replaced by the default. */
 export function parse(out: string): HomeConfig {
   const m = /config=(\{.*\})\}\]/.exec(out)
-  if (!m) throw new Error(`CleanMyTV Home не ответил: ${out.trim().slice(0, 300) || "нет вывода"}`)
+  if (!m) throw new Error(`Bitora Android TV не ответил: ${out.trim().slice(0, 300) || "нет вывода"}`)
   const o = JSON.parse(m[1]) as Record<string, unknown>
   const cfg: HomeConfig = { ...DEFAULTS, ...clean(o, true) }
   cfg.has_wallpaper = o.has_wallpaper === true
@@ -285,11 +285,11 @@ function call(method: string, arg?: string, task = 'theme'): Promise<string> {
   return T.tv().shell(cmd)
 }
 
-/** The apps CleanMyTV Home shows, with the names the TV gives them. */
+/** The apps Bitora Android TV shows, with the names the TV gives them. */
 export async function apps(): Promise<TvApp[]> {
   const out = await T.tv().shell(`content call --uri ${URI} --method apps`)
   const m = /apps=(\[.*\])\}\]/.exec(out)
-  if (!m) throw new Error(`CleanMyTV Home не вернул список приложений: ${out.trim().slice(0, 200) || "нет вывода"}`)
+  if (!m) throw new Error(`Bitora Android TV не вернул список приложений: ${out.trim().slice(0, 200) || "нет вывода"}`)
   const list = JSON.parse(m[1]) as unknown[]
   return list.flatMap((a) => {
     const o = a as Record<string, unknown>
@@ -303,7 +303,7 @@ export async function apps(): Promise<TvApp[]> {
 export async function keys(): Promise<KeyPress[]> {
   const out = await T.tv().shell(`content call --uri ${URI} --method keys`)
   const m = /keys=(\[.*\])\}\]/.exec(out)
-  if (!m) throw new Error(`CleanMyTV Home не вернул список кнопок: ${out.trim().slice(0, 200) || "нет вывода"}`)
+  if (!m) throw new Error(`Bitora Android TV не вернул список кнопок: ${out.trim().slice(0, 200) || "нет вывода"}`)
   return (JSON.parse(m[1]) as unknown[]).flatMap((k) => {
     const o = k as Record<string, unknown>
     return Number.isInteger(o.seq) && Number.isInteger(o.code) ? [{ seq: o.seq as number, code: o.code as number, name: typeof o.name === 'string' ? o.name.slice(0, 40) : `KEYCODE_${o.code}` }] : []
@@ -504,7 +504,7 @@ async function restoreBackup(): Promise<boolean> {
   if (!base || !existsSync(base + '.json')) return false
   try {
     const saved = JSON.parse(readFileSync(base + '.json', 'utf8')) as Record<string, unknown>
-    log(TASK, 'info', "CleanMyTV Home started empty; putting this computer's copy of its settings back")
+    log(TASK, 'info', "Bitora Android TV started empty; putting this computer's copy of its settings back")
     await setConfig(clean(saved, true))
     const wallpaper = await wallpaperCopy()
     if (wallpaper) await setWallpaper(wallpaper)

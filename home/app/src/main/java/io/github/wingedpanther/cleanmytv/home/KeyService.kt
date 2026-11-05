@@ -30,7 +30,7 @@ object KeyLog {
 /**
  * Remote buttons and the app lock's guard.
  *
- * Remote buttons, mapped from CleanMyTV. Only buttons in the map are handled (and swallowed, so the
+ * Remote buttons, mapped from Bitora Android TV. Only buttons in the map are handled (and swallowed, so the
  * TV doesn't also do its own thing); every other button returns false and reaches apps untouched.
  * That is the line upstream's key helper crossed in #26.
  */

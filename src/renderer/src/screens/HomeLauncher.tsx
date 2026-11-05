@@ -25,13 +25,13 @@ const TABS: [Tab, string][] = [
 
 const ACCENTS = ['#FF3000', '#2EC4B6', '#FFB23C', '#7C5CFF', '#3DDC84', '#FFFFFF']
 
-/** The TV has an older CleanMyTV Home than this app carries. */
+/** The TV has an older Bitora Android TV than this app carries. */
 const outdated = (h: HomeStatus): boolean => h.installed && !!h.bundledVersion && h.versionName !== h.bundledVersion
 
 type SetFn = (change: Partial<HomeConfig>, wait?: number) => void
 
 /**
- * Everything for CleanMyTV Home. Each change is sent to the TV as soon as it's made (sliders and typing
+ * Everything for Bitora Android TV. Each change is sent to the TV as soon as it's made (sliders and typing
  * wait until they settle), and the launcher redraws at once: there's no Apply button.
  */
 export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenProps): ReactNode {
@@ -234,16 +234,16 @@ export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenP
   }, [ready])
   // Why the other tabs are greyed out (#38).
   const locked = !home?.installed
-    ? "Сначала установите CleanMyTV Home на вкладке «Обзор»."
+    ? "Сначала установите Bitora Android TV на вкладке «Обзор»."
     : outdated(home)
       ? "Сначала нажмите «Обновить и использовать» на вкладке «Обзор»."
-      : "Ожидание настроек CleanMyTV Home. Если сообщение не исчезает, подключитесь заново."
+      : "Ожидание настроек Bitora Android TV. Если сообщение не исчезает, подключитесь заново."
 
   return (
     <>
       <h1>Главный экран</h1>
       <p className="lede">
-        CleanMyTV Home — новый главный экран ТВ без рекламы, с вашими приложениями и оформлением. Установите его один раз и меняйте настройки здесь: ТВ применяет их сразу и сохраняет после перезагрузки. Штатный лаунчер можно вернуть на вкладке «Обзор». </p>
+        Bitora Android TV — новый главный экран ТВ без рекламы, с вашими приложениями и оформлением. Установите его один раз и меняйте настройки здесь: ТВ применяет их сразу и сохраняет после перезагрузки. Штатный лаунчер можно вернуть на вкладке «Обзор». </p>
       <ResultNotice result={result} onDismiss={() => setResult(null)} />
       {stockPick && !busy && (
         <StockPicker
@@ -259,7 +259,7 @@ export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenP
       )}
 
       {!home ? (
-        <Busy text="Проверка CleanMyTV Home на ТВ" />
+        <Busy text="Проверка Bitora Android TV на ТВ" />
       ) : (
         <>
           <div className="tabs" role="tablist">
@@ -272,7 +272,7 @@ export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenP
 
           {outdated(home) && (
             <div className="notice warn">
-              На ТВ установлен CleanMyTV Home {home.versionName}; в приложении версия {home.bundledVersion}. Нажмите «Обновить и использовать», чтобы менять макет, приложения, оформление и кнопки пульта. После обновления откроются остальные вкладки. </div>
+              На ТВ установлен Bitora Android TV {home.versionName}; в приложении версия {home.bundledVersion}. Нажмите «Обновить и использовать», чтобы менять макет, приложения, оформление и кнопки пульта. После обновления откроются остальные вкладки. </div>
           )}
           {tab === 'overview' && (
             <Overview home={home} busy={!!busy} run={run} askStock={() => setAskStock(true)} host={status.host} onShot={refreshTvs} />
@@ -300,7 +300,7 @@ export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenP
           }}
         >
           <p>
-            Перед первой темой приложение сохраняет оформление для восстановления. Ваши обои установлены старой версией CleanMyTV, которая не сохранила копию. Поэтому восстановление оформления оставит обои темы. </p>
+            Перед первой темой приложение сохраняет оформление для восстановления. Ваши обои установлены старой версией Bitora Android TV, которая не сохранила копию. Поэтому восстановление оформления оставит обои темы. </p>
           <p>Чтобы сохранить обои, сначала повторно выберите то же изображение в разделе «Обои» ниже.</p>
         </Confirm>
       )}
@@ -315,7 +315,7 @@ export function HomeLauncher({ markDone, refreshTvs, status, homeSeen }: ScreenP
           }}
           onCancel={() => setAskStock(false)}
         >
-          <p>Приложение включит штатный лаунчер и назначит его главным экраном. CleanMyTV Home останется установленным, чтобы можно было переключиться снова.</p>
+          <p>Приложение включит штатный лаунчер и назначит его главным экраном. Bitora Android TV останется установленным, чтобы можно было переключиться снова.</p>
         </Confirm>
       )}
     </>
@@ -335,7 +335,7 @@ function StockPicker({ pick, onPick, onCancel }: { pick: StockPick; onPick: (sto
       <h2>Какой лаунчер был установлен на ТВ изначально?</h2>
       {pick.choices.length === 0 ? (
         <p className="muted">
-          На ТВ нет другого приложения главного экрана, кроме CleanMyTV Home. Оставьте всё как есть и сообщите модель ТВ на GitHub. </p>
+          На ТВ нет другого приложения главного экрана, кроме Bitora Android TV. Оставьте всё как есть и сообщите модель ТВ на GitHub. </p>
       ) : (
         <>
           <p className="small muted">
@@ -408,13 +408,13 @@ function Overview(props: { home: HomeStatus; busy: boolean; run: (label: string,
         )}
         <div className="row" style={{ marginTop: 16 }}>
           {(!home.installed || outdated(home)) && (
-            <button className="btn primary" disabled={busy || !home.bundled || !!home.unsupported} onClick={() => run("Установка CleanMyTV Home. Не выключайте ТВ.", () => window.cytv.installHome(), (s) => window.cytv.installHome(s))}>
+            <button className="btn primary" disabled={busy || !home.bundled || !!home.unsupported} onClick={() => run("Установка Bitora Android TV. Не выключайте ТВ.", () => window.cytv.installHome(), (s) => window.cytv.installHome(s))}>
               {home.installed ? "Обновить и использовать" : "Установить и использовать"}
             </button>
           )}
           {home.installed && !home.isHome && (
-            <button className="btn primary" disabled={busy} onClick={() => run("Назначение CleanMyTV Home главным экраном", () => window.cytv.useHome(), (s) => window.cytv.useHome(s))}>
-              Использовать CleanMyTV Home </button>
+            <button className="btn primary" disabled={busy} onClick={() => run("Назначение Bitora Android TV главным экраном", () => window.cytv.useHome(), (s) => window.cytv.useHome(s))}>
+              Использовать Bitora Android TV </button>
           )}
           {home.isHome && (
             <button className="btn" disabled={busy} onClick={props.askStock}>
@@ -424,7 +424,7 @@ function Overview(props: { home: HomeStatus; busy: boolean; run: (label: string,
         {home.oldLauncher && (
           <div className="notice" style={{ marginTop: 16, marginBottom: 0 }}>
             <p style={{ margin: '0 0 10px' }}>
-              На ТВ всё ещё установлен лаунчер CleanYourTV из ранних версий. CleanMyTV Home заменяет его. {!home.isHome && "Сначала установите CleanMyTV Home или переключитесь на него."}
+              На ТВ всё ещё установлен лаунчер CleanYourTV из ранних версий. Bitora Android TV заменяет его. {!home.isHome && "Сначала установите Bitora Android TV или переключитесь на него."}
             </p>
             <button className="btn small" disabled={busy || !home.isHome} onClick={() => run("Удаление лаунчера CleanYourTV", () => window.cytv.removeOldLauncher())}>
               Удалить лаунчер CleanYourTV </button>
@@ -1001,7 +1001,7 @@ function WidgetsTab({ cfg, set }: { cfg: HomeConfig; set: SetFn }): ReactNode {
       <div className="card">
         <Toggle
           label="Сейчас играет"
-          hint="Карточка воспроизведения музыки или видео с кнопками запуска, паузы и следующего трека. Видна только при загруженном контенте. ТВ разрешает CleanMyTV Home определять воспроизводящее приложение; уведомления не читаются."
+          hint="Карточка воспроизведения музыки или видео с кнопками запуска, паузы и следующего трека. Видна только при загруженном контенте. ТВ разрешает Bitora Android TV определять воспроизводящее приложение; уведомления не читаются."
           checked={playing}
           onChange={(v) => set({ sections: v ? ['nowplaying', ...cfg.sections.filter((s) => s !== 'nowplaying')] : cfg.sections.filter((s) => s !== 'nowplaying') })}
         />
@@ -1203,7 +1203,7 @@ function ButtonsTab(props: { cfg: HomeConfig; set: SetFn; apps: TvApp[]; setCfg:
       {xiaomi && !miDone && (
         <div className="notice">
           <p style={{ margin: '0 0 10px' }}>
-            Кнопка Mi на пультах Xiaomi открывает PatchWall, поэтому не работает после его отключения. CleanMyTV Home может назначить ей переход домой. Если кнопка не заработает, нажмите «Слушать» ниже и нажмите Mi, чтобы увидеть её код. </p>
+            Кнопка Mi на пультах Xiaomi открывает PatchWall, поэтому не работает после его отключения. Bitora Android TV может назначить ей переход домой. Если кнопка не заработает, нажмите «Слушать» ниже и нажмите Mi, чтобы увидеть её код. </p>
           <button className="btn small" disabled={switching} onClick={miButtonHome}>
             Назначить кнопке Mi переход домой </button>
         </div>
@@ -1211,7 +1211,7 @@ function ButtonsTab(props: { cfg: HomeConfig; set: SetFn; apps: TvApp[]; setCfg:
       <div className="card">
         <Toggle
           label="Кнопки пульта"
-          hint="CleanMyTV Home назначает кнопкам новые действия во всех приложениях. Меняются только добавленные ниже кнопки. Используется служба специальных возможностей Android, которую можно включить и отключить здесь."
+          hint="Bitora Android TV назначает кнопкам новые действия во всех приложениях. Меняются только добавленные ниже кнопки. Используется служба специальных возможностей Android, которую можно включить и отключить здесь."
           checked={cfg.buttons_on}
           disabled={switching}
           onChange={toggle}

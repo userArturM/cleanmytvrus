@@ -104,7 +104,7 @@ fun ThemeCarousel(accent: Color, onClose: () -> Unit) {
             if (themes.isEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("На этом ТВ пока нет тем", color = C_TEXT, fontSize = 24.sp, fontWeight = FontWeight.Medium)
-                    Text("В CleanMyTV: Главный экран → Оформление и обои → Темы → Загрузить темы на ТВ.", color = C_MUTED, fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
+                    Text("В Bitora Android TV: Главный экран → Оформление и обои → Темы → Загрузить темы на ТВ.", color = C_MUTED, fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
                 }
                 return@Box
             }

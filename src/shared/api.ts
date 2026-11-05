@@ -127,7 +127,7 @@ export interface ApplyResult {
   stockChoices?: string[]
 }
 
-/** CleanMyTV Home on the TV. */
+/** Bitora Android TV on the TV. */
 export interface UpdateInfo {
   current: string
   /** The newest release on GitHub, if the app has heard. */
@@ -153,16 +153,16 @@ export interface HomeStatus {
   /** This copy of the desktop app carries it. */
   bundled: boolean
   bundledVersion?: string
-  /** The CleanYourTV launcher from CleanMyTV 0.1.x is still on the TV. */
+  /** The CleanYourTV launcher from Bitora Android TV 0.1.x is still on the TV. */
   oldLauncher: boolean
-  /** Why CleanMyTV Home can't go on this TV (Android older than 9). */
+  /** Why Bitora Android TV can't go on this TV (Android older than 9). */
   unsupported?: string
 }
 
 export type HomeLayout = 'shelf' | 'split' | 'rail'
 export type HomeSection = 'nowplaying' | 'dock' | 'rows' | 'folders' | 'grid'
 export type QuickId = 'settings' | 'wifi' | 'inputs' | 'bluetooth' | 'display' | 'apps' | 'sleep' | 'search' | 'music' | 'panel' | 'themes'
-/** A top-bar icon: a quick-settings action, or `app:<package>` for an app shortcut (CleanMyTV Home 1.2.0 and later). */
+/** A top-bar icon: a quick-settings action, or `app:<package>` for an app shortcut (Bitora Android TV 1.2.0 and later). */
 export type QuickEntry = QuickId | `app:${string}`
 
 /** What a mapped remote button does: a quick-settings action, Home, Back, nothing, or open an app. */
@@ -189,7 +189,7 @@ export interface HomeGroup {
   apps: string[]
 }
 
-/** CleanMyTV Home's settings, as its ConfigProvider holds them. Snake case, as on the TV. */
+/** Bitora Android TV's settings, as its ConfigProvider holds them. Snake case, as on the TV. */
 export interface HomeConfig {
   // Arrangement
   layout: HomeLayout
@@ -297,7 +297,7 @@ export interface ThemePackItem {
   jpeg: string
 }
 
-/** The look of CleanMyTV Home, from a built-in theme or a .cmtvtheme file (src/shared/themes.ts). */
+/** The look of Bitora Android TV, from a built-in theme or a .cmtvtheme file (src/shared/themes.ts). */
 export interface HomeTheme {
   name: string
   /** Only the look settings in THEME_KEYS. */
@@ -400,7 +400,7 @@ export interface CytvApi {
   reconnect(): Promise<ConnStatus | null>
   /** Port 5555 refuses or ignores connections (after debugging was switched off). */
   checkAdbClosed(host: string): Promise<{ closed: boolean; message: string }>
-  /** Asks GitHub for a newer CleanMyTV, at most every 12 hours. */
+  /** Asks GitHub for a newer Bitora Android TV, at most every 12 hours. */
   checkUpdate(): Promise<UpdateInfo>
   /** Restarts the TV, reconnects, and checks a home screen comes up; puts the stock launcher back if not. */
   bootCheck(): Promise<BootCheckResult>
@@ -422,18 +422,18 @@ export interface CytvApi {
   applyDebloat(req: DebloatApplyRequest): Promise<ApplyResult>
   restore(listId: string): Promise<ApplyResult>
 
-  // CleanMyTV Home
-  /** Give Home back to the stock launcher, leaving CleanMyTV Home installed. */
+  // Bitora Android TV
+  /** Give Home back to the stock launcher, leaving Bitora Android TV installed. */
   useStockLauncher(): Promise<ApplyResult>
-  /** Uninstall the CleanYourTV launcher that CleanMyTV 0.1.x installed, once it isn't Home. */
+  /** Uninstall the CleanYourTV launcher that Bitora Android TV 0.1.x installed, once it isn't Home. */
   removeOldLauncher(): Promise<ApplyResult>
   homeStatus(): Promise<HomeStatus>
-  /** Installs or updates CleanMyTV Home and makes it Home, putting the old Home back if that fails. */
+  /** Installs or updates Bitora Android TV and makes it Home, putting the old Home back if that fails. */
   /** `stock`: the TV's own launcher, when the owner picked it. */
   installHome(stock?: string): Promise<InstallResult>
-  /** Make the installed CleanMyTV Home the Home screen. */
+  /** Make the installed Bitora Android TV the Home screen. */
   useHome(stock?: string): Promise<ApplyResult>
-  /** The apps CleanMyTV Home shows, named as on the TV. */
+  /** The apps Bitora Android TV shows, named as on the TV. */
   homeApps(): Promise<TvApp[]>
   readHomeConfig(): Promise<HomeConfig>
   /** Applies on the TV straight away; returns what the launcher now has. */

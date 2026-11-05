@@ -5,7 +5,7 @@ import * as debloat from './debloat'
 import * as home from './home'
 
 export async function bugReport(appVersion: string): Promise<string> {
-  const out = [`CleanMyTV ${appVersion}, ${process.platform} ${release()} ${process.arch}`]
+  const out = [`Bitora Android TV ${appVersion}, ${process.platform} ${release()} ${process.arch}`]
   const p = T.getStatus().probe
   if (!p) return [...out, "ТВ: не подключён"].join('\n')
   out.push(`ТВ: ${p.manufacturer} ${p.model} (устройство ${p.device}, продукт ${p.product}), Android ${p.release} (SDK ${p.sdk}), сборка ${p.build}`)
@@ -15,7 +15,7 @@ export async function bugReport(appVersion: string): Promise<string> {
   const claims = await T.homeClaimants().catch(() => [] as string[])
   out.push(`Приложения главного экрана: ${claims.join(', ') || 'нет'}`)
   const h = await home.status().catch(() => null)
-  out.push(`CleanMyTV Home: ${!h ? 'неизвестно' : h.installed ? `${h.versionName ?? '?'} установлен${h.isHome ? ", главный экран" : ''}` : "не установлен"}` +
+  out.push(`Bitora Android TV: ${!h ? 'неизвестно' : h.installed ? `${h.versionName ?? '?'} установлен${h.isHome ? ", главный экран" : ''}` : "не установлен"}` +
     (h?.bundledVersion ? `, версия в приложении ${h.bundledVersion}` : ''))
   return out.join('\n')
 }

@@ -1,4 +1,4 @@
-// Themes for CleanMyTV Home: the look in one go, from a built-in set or a .cmtvtheme file someone shared.
+// Themes for Bitora Android TV: the look in one go, from a built-in set or a .cmtvtheme file someone shared.
 // A theme never touches apps, rows, folders, layout, buttons or anything personal like the weather place.
 import type { HomeConfig, HomeTheme } from './api'
 
@@ -40,10 +40,10 @@ export function parseTheme(text: string): HomeTheme {
   try {
     o = JSON.parse(text) as Record<string, unknown>
   } catch {
-    throw new Error("Это не файл темы CleanMyTV.")
+    throw new Error("Это не файл темы Bitora Android TV.")
   }
-  if (!o || typeof o !== 'object' || o.format !== FORMAT) throw new Error("Это не файл темы CleanMyTV.")
-  if (o.version !== 1) throw new Error('Тема сохранена более новой версией CleanMyTV. Обновите приложение и повторите загрузку.')
+  if (!o || typeof o !== 'object' || o.format !== FORMAT) throw new Error("Это не файл темы Bitora Android TV.")
+  if (o.version !== 1) throw new Error('Тема сохранена более новой версией Bitora Android TV. Обновите приложение и повторите загрузку.')
   const look = o.look && typeof o.look === 'object' ? pickLook(o.look as Record<string, unknown>) : {}
   const w = o.wallpaper
   if (w !== undefined && w !== null && (typeof w !== 'string' || w.length > MAX_WALLPAPER_B64 || !/^[A-Za-z0-9+/]+=*$/.test(w))) {
